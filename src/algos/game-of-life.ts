@@ -17,7 +17,7 @@ class GameOfLife {
         for(var i: number = 0; i < size; i++) {
             this.data[i] = [];
             for(var j: number = 0; j< size; j++) {
-                this.data[i][j] = 0;
+                this.data[i][j] = Math.floor(Math.random() * 2);
             }
         }
     }
@@ -47,8 +47,9 @@ class GameOfLife {
     }
 }
 
-var game = new GameOfLife(16);
-game.data[0][1] = game.data[1][2] = game.data[2][0] = game.data[2][1] = game.data[2][2] = 1;
+var game = new GameOfLife(128);
+var t = 32;
+game.data[t+0][t+2] = game.data[t+1][t+2] = game.data[t+0][t+3] = game.data[t+1][t+3] = game.data[t+2][t+2] = game.data[t+2][t+0] = game.data[t+2][t+1] = game.data[t+2][t+2] = game.data[t+3][t+1] = 1;
 
 setInterval(() => {
     for(var i: number = 0; i < game.data.length; i++) {
