@@ -58,6 +58,7 @@ setInterval(() => {
             context?.fillRect(j * (1024/game.data.length), i * (1024/game.data.length), 1024/game.data.length, 1024/game.data[i].length);
         }
     }
-    game.step();
-    
-}, 100);
+}, 13);
+
+const step_button = document.getElementById('button-step') as HTMLButtonElement;
+step_button.onclick = () => game.step();
