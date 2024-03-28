@@ -95,18 +95,18 @@ function Cell(x, y, squareSize, squareSize, type){
     this.changeType = function(type) {
         this.type = type;
         this.draw();
-        if (this.type == "start"){
-            //TODO Do something
-        }
-        if (temporaryStartCells.length > 1){
-            //Do something
-        }
-        if (this.type == "finish"){
-            //Do something
-        }
-        if (temporaryFinishCells.length > 1){
-            //Do something
-        }
+        // if (this.type == "start"){
+        //     //TODO Do something
+        // }
+        // if (temporaryStartCells.length > 1){
+        //     //Do something
+        // }
+        // if (this.type == "finish"){
+        //     //Do something
+        // }
+        // if (temporaryFinishCells.length > 1){
+        //     //Do something
+        // }
         
         
     }
@@ -129,10 +129,12 @@ function fillCanvasWithRects(){
         }
         row += 1;
     }
-    matrix[0][0].changeType("start");
-    matrix[matrix.length - 1][matrix[matrix.length - 1].length - 1].changeType("finish");
+    matrix[Math.round(matrix.length / 3)][Math.round(matrix[0].length / 2)].changeType("start");
+    matrix[Math.round(matrix.length / 3 * 2)][Math.round(matrix[0].length / 2)].changeType("finish");
+    startCell = matrix[Math.round(matrix.length / 3)][Math.round(matrix[0].length / 2)];
+    finishCell = matrix[Math.round(matrix.length / 3 * 2)][Math.round(matrix[0].length / 2)];
 }
-//TODO make it so there are single start and finish cells on the canvas
+//TODO make it so cell borders don't become thicker when their type changes
 
 var drag = false;//determines whether mouse being held pressed over the canvas
 var dragType;
@@ -156,10 +158,19 @@ window.addEventListener('mousedown', function(event){
     drag = true;
 });
 
+var startCell;
+var finishCell;
+
 canvas.addEventListener('mousemove',function(event){
+    //determine which cell is the cursor over now
+
+    var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
+    var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
+
+
     if (drag == true){
-        var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
-        var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
+        x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
+        y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
         if (dragType == "space" && matrix[x-1][y-1].type == "space"){
             matrix[x-1][y-1].changeType("wall");
         }
@@ -167,14 +178,22 @@ canvas.addEventListener('mousemove',function(event){
             matrix[x-1][y-1].changeType("space");
         }
         else if (dragType == "start" && matrix[x-1][y-1].type == "space"){
-            matrix[x-1][y-1].changeType("start");
+            if (startCell != matrix[x-1][y-1])
+            {
+                matrix[x-1][y-1].changeType("start");
+                startCell.changeType("space");
+                //if ()
+                startCell = matrix[x-1][y-1];
+            }
         }
         else if (dragType == "finish" && matrix[x-1][y-1].type == "space"){
-            matrix[x-1][y-1].changeType("finish");
+            if (finishCell != matrix[x-1][y-1])
+            {
+                matrix[x-1][y-1].changeType("finish");
+                finishCell.changeType("space");
+                //if ()
+                finishCell = matrix[x-1][y-1];
+            }
         }
     }
 })
-
-console.log((6.6).toFixed());
-
-console.log("test");
