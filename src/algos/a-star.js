@@ -49,105 +49,131 @@ function submitTriggered(){
 
 }
 
-// function lineCanvas(){
-//     clearCanvas();
-//     c.beginPath();
-//     c.strokeStyle = "#566573";
-//     for (var i = squareSize; i < squareSize * width; i+=squareSize){
-//         c.moveTo(i, 0);
-//         c.lineTo(i, height * squareSize);
-//     }
-//     for (var i = squareSize; i < squareSize * height; i+=squareSize){
-//         c.moveTo(0, i);
-//         c.lineTo(width * squareSize, i);
-//     }
-   
-//     c.stroke();
-// }
-
-function Cell(x, y, squareSize){
+function Cell(x, y, squareSize, squareSize, type){
     this.x = x;
     this.y = y;
-    this.Size = squareSize;
+    this.type = type;
+    this.size = squareSize;
+    this.wall = false;
+
+    const types = new Map();
+    types.set("space", '#F8F9F9');
+    types.set("wall", '#A6ACAF');
+    types.set("start", '#27FF00');
+    types.set("finish", '#FF0000');
 
     this.draw = function(){
         c.beginPath();
         c.rect(x, y, squareSize, squareSize);
-        c.fillStyle = '#F8F9F9';
+        c.fillStyle = types.get(this.type);
         c.fill();
         c.lineWidth = 0.3;
         c.strokeStyle = "#17202A";
         c.stroke();
     }
 
-    this.changeState = function(){
-        c.clearRect(x, y, squareSize, squareSize);
-        c.beginPath();
-        c.rect(x, y, squareSize, squareSize);
-        c.fillStyle = '#A6ACAF';
-        c.fill();
-        c.lineWidth = 0.3;
-        c.strokeStyle = "#17202A";
-        c.stroke();
+    this.turnWall = function(){
+        this.changeType("wall");
+        this.draw();
+
     }
+
+    this.turnSpace = function(){
+        this.changeType("space");
+        this.draw();
+    }
+
+    this.changeState = function(){
+        if (this.type == "space"){
+            this.turnWall();
+        }
+        else{
+            this.turnSpace();
+        }
+    }
+
+    this.changeType = function(type) {
+        this.type = type;
+        this.draw();
+        if (this.type == "start"){
+            //TODO Do something
+        }
+        if (temporaryStartCells.length > 1){
+            //Do something
+        }
+        if (this.type == "finish"){
+            //Do something
+        }
+        if (temporaryFinishCells.length > 1){
+            //Do something
+        }
+        
+        
+    }
+
 }
 var matrix = [];
 function fillCanvasWithRects(){
     clearCanvas();
+    matrix = [];                                
     var row = 0;
     var column = 0;
     for (var i = 0; i <= canvas.width - squareSize; i += squareSize){
         column = 0;
         matrix[row] = [];
         for(var j = 0; j <= canvas.height - squareSize; j += squareSize){
-            var cell = new Cell(i, j, squareSize, squareSize);
+            var cell = new Cell(i, j, squareSize, squareSize, "space");
             matrix[row][column] = cell;
             cell.draw();
             column += 1;
         }
         row += 1;
     }
+    matrix[0][0].changeType("start");
+    matrix[matrix.length - 1][matrix[matrix.length - 1].length - 1].changeType("finish");
 }
+//TODO make it so there are single start and finish cells on the canvas
 
-const mouse = 
+var drag = false;//determines whether mouse being held pressed over the canvas
+var dragType;
 
 canvas.width = 37 * squareSize;
 canvas.height = 28 * squareSize;
 
-//lineCanvas();
 fillCanvasWithRects();
 
 var resSubBtn = document.getElementById('resolutionSubmitButton');
 resSubBtn.addEventListener('click', submitTriggered);
 
-var drag = false;
-
-function mouseUp(){
+window.addEventListener('mouseup', function(){
     drag = false;
-}
+});
 
-function mouseDown(){
+window.addEventListener('mousedown', function(event){
+    var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
+    var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
+    dragType = matrix[x-1][y-1].type;
     drag = true;
-}
-
-window.addEventListener('mouseup', mouseUp);
-
-window.addEventListener('mousedown', mouseDown);
+});
 
 canvas.addEventListener('mousemove',function(event){
     if (drag == true){
         var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
         var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
-        console.log(event);
-        matrix[x-1][y-1].changeState();
+        if (dragType == "space" && matrix[x-1][y-1].type == "space"){
+            matrix[x-1][y-1].changeType("wall");
+        }
+        else if (dragType == "wall" && matrix[x-1][y-1].type == "wall"){
+            matrix[x-1][y-1].changeType("space");
+        }
+        else if (dragType == "start" && matrix[x-1][y-1].type == "space"){
+            matrix[x-1][y-1].changeType("start");
+        }
+        else if (dragType == "finish" && matrix[x-1][y-1].type == "space"){
+            matrix[x-1][y-1].changeType("finish");
+        }
     }
-    
 })
-
-// var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
-//     var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
-//     console.log(event);
-//     matrix[x-1][y-1].changeState();
 
 console.log((6.6).toFixed());
 
