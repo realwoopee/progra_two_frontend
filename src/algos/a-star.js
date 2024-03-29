@@ -52,15 +52,23 @@ function submitTriggered(){
 function Cell(x, y, squareSize, squareSize, type){
     this.x = x;
     this.y = y;
+    this.xIndex;
+    this.yIndex;
     this.type = type;
     this.size = squareSize;
     this.wall = false;
+    this.startDistance;
+    this.finishDistance;
+    this.overallDistance;
 
     const types = new Map();
     types.set("space", '#F8F9F9');
     types.set("wall", '#A6ACAF');
     types.set("start", '#27FF00');
     types.set("finish", '#FF0000');
+    types.set("routeOpened", '#FFEB3F');
+    types.set("routeClosed", '#7DFF79');
+    types.set("routeIncluded", '#009BFF');
 
     this.draw = function(){
         c.beginPath();
@@ -71,6 +79,7 @@ function Cell(x, y, squareSize, squareSize, type){
         c.strokeStyle = "#17202A";
         c.stroke();
     }
+    
 
     this.turnWall = function(){
         this.changeType("wall");
@@ -83,14 +92,6 @@ function Cell(x, y, squareSize, squareSize, type){
         this.draw();
     }
 
-    this.changeState = function(){
-        if (this.type == "space"){
-            this.turnWall();
-        }
-        else{
-            this.turnSpace();
-        }
-    }
 
     this.changeType = function(type) {
         this.type = type;
@@ -124,6 +125,8 @@ function fillCanvasWithRects(){
         for(var j = 0; j <= canvas.height - squareSize; j += squareSize){
             var cell = new Cell(i, j, squareSize, squareSize, "space");
             matrix[row][column] = cell;
+            cell.xIndex = row;
+            cell.yIndex = column;
             cell.draw();
             column += 1;
         }
@@ -136,6 +139,7 @@ function fillCanvasWithRects(){
 }
 //TODO make it so cell borders don't become thicker when their type changes
 
+
 var drag = false;//determines whether mouse being held pressed over the canvas
 var dragType;
 
@@ -143,7 +147,94 @@ canvas.width = 37 * squareSize;
 canvas.height = 28 * squareSize;
 
 fillCanvasWithRects();
+//#######################################
+var exploredCells = [];
 
+function compareCells(a, b){
+    if (a.overallDistance < b.overallDistance){
+        return 1;
+    }
+    else if (a.overallDistance > b.overallDistance){
+        return -1;
+    }
+    else{
+    return (a.finishDistance < b.finishDistance) ? 1 : -1;
+    }
+    //return (first.overallDistance < second.overallDistance) ? first : (first.overallDistance > second.overallDistance ? second : (first.overallDistance < second.overallDistance ? first : second));
+}
+
+function exploreCellVicinity(cell){
+    var flagTest;
+    var iteratorX = -1;
+    var iteratorY = -1;
+    while (iteratorX < 2){
+        iteratorY = -1;
+        while (iteratorY < 2){
+            (iteratorX == 0 && iteratorY == 0) ? iteratorY += 1 : iteratorY += 0;
+            tempCell = matrix[cell.xIndex + iteratorX][cell.yIndex + iteratorY];
+            if (cell.xIndex != tempCell.xIndex && cell.yIndex != tempCell.yIndex){ //diagonal cells
+                //find the coordinates of cells that make a full 2x2 square:
+                var cellFirst = matrix[cell.xIndex][tempCell.yIndex];
+                var cellSecond = matrix[tempCell.xIndex][cell.yIndex];
+                if (cellFirst.type == 'wall' && cellSecond.type == 'wall'){
+                    flagTest = true;
+                }
+                else{
+                    flagTest = false;
+                }
+            }
+            if (tempCell.type != 'wall' && tempCell.type != 'routeClosed' && flagTest == false){
+                tempCell.startDistance = parseInt(Math.pow(Math.pow(Math.abs((startCell.xIndex - tempCell.xIndex) * 10), 2) + Math.pow(Math.abs((startCell.yIndex - tempCell.yIndex) * 10), 2), 0.5).toFixed());
+                tempCell.finishDistance = parseInt(Math.pow(Math.pow(Math.abs((finishCell.xIndex - tempCell.xIndex) * 10), 2) + Math.pow(Math.abs((finishCell.yIndex - tempCell.yIndex) * 10), 2), 0.5).toFixed());
+                // console.log(tempCell.startDistance);
+                // console.log(tempCell.finishDistance);
+                tempCell.overallDistance = parseInt((tempCell.startDistance + tempCell.finishDistance).toFixed());
+                
+                if (tempCell.type != 'routeOpened'){
+                    exploredCells.push(tempCell);
+                }
+                if (tempCell.type == 'space'){
+                    tempCell.changeType('routeOpened');
+                }
+            }
+            iteratorY += 1;
+        }
+        iteratorX += 1;
+    }
+    exploredCells.sort(compareCells);
+    console.log(exploredCells);
+}
+
+
+function exec(){
+    // startCell = matrix[Math.round(matrix.length / 3)][Math.round(matrix[0].length / 2)];
+    // finishCell = matrix[Math.round(matrix.length / 3 * 2)][Math.round(matrix[0].length / 2)];
+    var currentCell = startCell;
+    
+    while (finishCell.type == 'finish'){
+        exploreCellVicinity(currentCell);
+        currentCell = exploredCells[exploredCells.length - 1];
+        exploredCells.splice(exploredCells.length - 1, 1);
+        if (currentCell == exploredCells[exploredCells.length - 1]){
+            console.log("ERROR: CELL DELETED INCORRECTLY");
+        }
+        for (var i = 0; i < exploredCells.length; i += 1){
+            if (exploredCells[i].type == 'routeClosed'){
+                console.log("ERROR: routeClosed CELL AFTER DELETING ACCURED");
+            }
+        }
+        if (currentCell.type != 'start'){
+            currentCell.changeType('routeClosed');
+        }
+    }
+    finishCell.changeType('finish');
+}
+
+var execution = document.getElementById("Start Routing");
+
+execution.addEventListener('click', exec);
+
+//#######################################
 var resSubBtn = document.getElementById('resolutionSubmitButton');
 resSubBtn.addEventListener('click', submitTriggered);
 
@@ -152,11 +243,14 @@ window.addEventListener('mouseup', function(){
 });
 
 window.addEventListener('mousedown', function(event){
+    //TODO add a condition so this only works when cursor is over canvas 
     var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
     var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
     dragType = matrix[x-1][y-1].type;
     drag = true;
 });
+
+
 
 var startCell;
 var finishCell;
