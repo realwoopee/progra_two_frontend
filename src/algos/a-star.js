@@ -222,17 +222,7 @@ const delay = (delayInms) => {
   };
 
 async function exec(){
-    // startCell = matrix[Math.round(matrix.length / 3)][Math.round(matrix[0].length / 2)];
-    // finishCell = matrix[Math.round(matrix.length / 3 * 2)][Math.round(matrix[0].length / 2)];
     var currentCell = startCell;
-    // setInterval(() => {
-    //     for(var i: number = 0; i < game.data.length; i++) {
-    //         for(var j: number = 0; j < game.data[i].length; j++) {
-    //             context!.fillStyle = game.data[i][j] === 1 ? 'white' : 'black';
-    //             context?.fillRect(j * (1024/game.data.length), i * (1024/game.data.length), 1024/game.data.length, 1024/game.data[i].length);
-    //         }
-    //     }
-    // }, 13);
 
     while (finishCell.type == 'finish'){
         await delay(15);
@@ -249,6 +239,7 @@ async function exec(){
         }
         if (currentCell.type != 'start'){
             currentCell.changeType('routeClosed');
+            var testVariableOne = 1;
         }
     }
     finishCell.changeType('finish');
