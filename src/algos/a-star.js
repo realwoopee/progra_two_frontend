@@ -49,6 +49,10 @@ function submitTriggered(){
 
 }
 
+function dull(){
+
+}
+
 function Cell(x, y, squareSize, squareSize, type){
     this.x = x;
     this.y = y;
@@ -113,6 +117,7 @@ function Cell(x, y, squareSize, squareSize, type){
     }
 
 }
+
 var matrix = [];
 function fillCanvasWithRects(){
     clearCanvas();
@@ -163,6 +168,10 @@ function compareCells(a, b){
     //return (first.overallDistance < second.overallDistance) ? first : (first.overallDistance > second.overallDistance ? second : (first.overallDistance < second.overallDistance ? first : second));
 }
 
+function controlBounds(x, y){
+    return (x > -1 && x < matrix.length && y > -1 && y < matrix[0].length) ? true : false;
+}
+
 function exploreCellVicinity(cell){
     var flagTest;
     var iteratorX = -1;
@@ -171,30 +180,33 @@ function exploreCellVicinity(cell){
         iteratorY = -1;
         while (iteratorY < 2){
             (iteratorX == 0 && iteratorY == 0) ? iteratorY += 1 : iteratorY += 0;
-            tempCell = matrix[cell.xIndex + iteratorX][cell.yIndex + iteratorY];
-            if (cell.xIndex != tempCell.xIndex && cell.yIndex != tempCell.yIndex){ //diagonal cells
-                //find the coordinates of cells that make a full 2x2 square:
-                var cellFirst = matrix[cell.xIndex][tempCell.yIndex];
-                var cellSecond = matrix[tempCell.xIndex][cell.yIndex];
-                if (cellFirst.type == 'wall' && cellSecond.type == 'wall'){
-                    flagTest = true;
+            if (controlBounds(cell.xIndex + iteratorX, cell.yIndex + iteratorY)){
+                tempCell = matrix[cell.xIndex + iteratorX][cell.yIndex + iteratorY];
+            
+                if (cell.xIndex != tempCell.xIndex && cell.yIndex != tempCell.yIndex){ //diagonal cells
+                    //find the coordinates of cells that make a full 2x2 square:
+                    var cellFirst = matrix[cell.xIndex][tempCell.yIndex];
+                    var cellSecond = matrix[tempCell.xIndex][cell.yIndex];
+                    if (cellFirst.type == 'wall' && cellSecond.type == 'wall'){
+                        flagTest = true;
+                    }
+                    else{
+                        flagTest = false;
+                    }
                 }
-                else{
-                    flagTest = false;
-                }
-            }
-            if (tempCell.type != 'wall' && tempCell.type != 'routeClosed' && flagTest == false){
-                tempCell.startDistance = parseInt(Math.pow(Math.pow(Math.abs((startCell.xIndex - tempCell.xIndex) * 10), 2) + Math.pow(Math.abs((startCell.yIndex - tempCell.yIndex) * 10), 2), 0.5).toFixed());
-                tempCell.finishDistance = parseInt(Math.pow(Math.pow(Math.abs((finishCell.xIndex - tempCell.xIndex) * 10), 2) + Math.pow(Math.abs((finishCell.yIndex - tempCell.yIndex) * 10), 2), 0.5).toFixed());
-                // console.log(tempCell.startDistance);
-                // console.log(tempCell.finishDistance);
-                tempCell.overallDistance = parseInt((tempCell.startDistance + tempCell.finishDistance).toFixed());
-                
-                if (tempCell.type != 'routeOpened'){
-                    exploredCells.push(tempCell);
-                }
-                if (tempCell.type == 'space'){
-                    tempCell.changeType('routeOpened');
+                if (tempCell.type != 'wall' && tempCell.type != 'routeClosed' && flagTest == false){
+                    tempCell.startDistance = parseInt(Math.pow(Math.pow(Math.abs((startCell.xIndex - tempCell.xIndex) * 10), 2) + Math.pow(Math.abs((startCell.yIndex - tempCell.yIndex) * 10), 2), 0.5).toFixed());
+                    tempCell.finishDistance = parseInt(Math.pow(Math.pow(Math.abs((finishCell.xIndex - tempCell.xIndex) * 10), 2) + Math.pow(Math.abs((finishCell.yIndex - tempCell.yIndex) * 10), 2), 0.5).toFixed());
+                    // console.log(tempCell.startDistance);
+                    // console.log(tempCell.finishDistance);
+                    tempCell.overallDistance = parseInt((tempCell.startDistance + tempCell.finishDistance).toFixed());
+                    
+                    if (tempCell.type != 'routeOpened'){
+                        exploredCells.push(tempCell);
+                    }
+                    if (tempCell.type == 'space'){
+                        tempCell.changeType('routeOpened');
+                    }
                 }
             }
             iteratorY += 1;
@@ -205,13 +217,25 @@ function exploreCellVicinity(cell){
     console.log(exploredCells);
 }
 
+const delay = (delayInms) => {
+    return new Promise(resolve => setTimeout(resolve, delayInms));
+  };
 
-function exec(){
+async function exec(){
     // startCell = matrix[Math.round(matrix.length / 3)][Math.round(matrix[0].length / 2)];
     // finishCell = matrix[Math.round(matrix.length / 3 * 2)][Math.round(matrix[0].length / 2)];
     var currentCell = startCell;
-    
+    // setInterval(() => {
+    //     for(var i: number = 0; i < game.data.length; i++) {
+    //         for(var j: number = 0; j < game.data[i].length; j++) {
+    //             context!.fillStyle = game.data[i][j] === 1 ? 'white' : 'black';
+    //             context?.fillRect(j * (1024/game.data.length), i * (1024/game.data.length), 1024/game.data.length, 1024/game.data[i].length);
+    //         }
+    //     }
+    // }, 13);
+
     while (finishCell.type == 'finish'){
+        await delay(15);
         exploreCellVicinity(currentCell);
         currentCell = exploredCells[exploredCells.length - 1];
         exploredCells.splice(exploredCells.length - 1, 1);
