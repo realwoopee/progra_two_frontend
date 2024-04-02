@@ -110,12 +110,10 @@ class GameUI {
     const speed_value = Math.round(1000 / 30);
     (this._controls['range-speed'] as HTMLInputElement).valueAsNumber = speed_value;
     this._game.speed = speed_value;
-    this._controls['range-speed-value'].innerText = speed_value.toString();
 
     this._controls['range-speed'].oninput = () => {
       const speed_value = (this._controls['range-speed'] as HTMLInputElement).valueAsNumber;
       this._game.speed = speed_value;
-      this._controls['range-speed-value'].innerText = speed_value.toString();
     };
   }
 
