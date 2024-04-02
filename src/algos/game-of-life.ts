@@ -23,10 +23,14 @@ class GameOfLife {
 
   set speed(value: number) {
     this._speed = value;
-    if(this.runner){
+    if (this.runner) {
       this.stop();
       this.start();
     }
+  }
+
+  get isRunning() {
+    return this.runner !== null;
   }
 
   render: ((data: typeof this.data) => void) | null = null;
@@ -35,7 +39,7 @@ class GameOfLife {
     for (var i: number = 0; i < size; i++) {
       this.data[i] = [];
       for (var j: number = 0; j < size; j++) {
-        this.data[i][j] = Math.floor(Math.random() * 2);
+        this.data[i][j] = 0; //Math.floor(Math.random() * 2);
       }
     }
   }
@@ -74,14 +78,93 @@ class GameOfLife {
   public stop() {
     if (this.runner)
       clearInterval(this.runner);
+    this.runner = null;
   }
 }
 
-var game = new GameOfLife(128);
-var t = 32;
-game.data[t + 0][t + 2] = game.data[t + 1][t + 2] = game.data[t + 0][t + 3] = game.data[t + 1][t + 3] = game.data[t + 2][t + 2] = game.data[t + 2][t + 0] = game.data[t + 2][t + 1] = game.data[t + 2][t + 2] = game.data[t + 3][t + 1] = 1;
+class GameUI {
+  private _game: GameOfLife;
+  private _controls: Record<string, HTMLElement>;
 
-game.render = (data: typeof game.data) => {
+  public constructor(game?: GameOfLife) {
+    this._game = game ?? new GameOfLife(128);
+    this._controls = {};
+  }
+
+  private init_controls() {
+    this._controls['button-step'] = document.getElementById("button-step") as HTMLButtonElement;
+    this._controls['button-step'].onclick = () => this.step_click();
+
+    this._controls['button-play'] = document.getElementById("button-play") as HTMLButtonElement;
+    this._controls['button-play'].onclick = () => this.play_click();
+
+    this._controls['button-clear'] = document.getElementById("button-clear") as HTMLButtonElement;
+    this._controls['button-clear'].onclick = () => this.clear_click();
+
+    this._controls['button-random'] = document.getElementById("button-random") as HTMLButtonElement;
+    this._controls['button-random'].onclick = () => this.randomize_click();
+
+    this._controls['range-speed'] = document.getElementById('range-speed') as HTMLInputElement;
+    this._controls['range-speed-value'] = document.getElementById('range-speed-value') as HTMLSpanElement;
+
+    const speed_value = Math.round(1000 / 30);
+    (this._controls['range-speed'] as HTMLInputElement).valueAsNumber = speed_value;
+    this._game.speed = speed_value;
+    this._controls['range-speed-value'].innerText = speed_value.toString();
+
+    this._controls['range-speed'].oninput = () => {
+      const speed_value = (this._controls['range-speed'] as HTMLInputElement).valueAsNumber;
+      this._game.speed = speed_value;
+      this._controls['range-speed-value'].innerText = speed_value.toString();
+    };
+  }
+
+  public init() {
+    this.init_controls();
+
+
+    this._game.render?.(this._game.data);
+  }
+
+  public play_click() {
+    if (this._game.isRunning) {
+      this._game.stop();
+      this._controls['button-play'].classList.remove('bi-pause');
+      this._controls['button-play'].classList.add('bi-play');
+      this._controls['button-play'].innerText = 'Start';
+    }
+    else {
+      this._game.start();
+      this._controls['button-play'].classList.remove('bi-play');
+      this._controls['button-play'].classList.add('bi-pause');
+      this._controls['button-play'].innerText = 'Stop';
+    }
+
+  }
+
+  public step_click() {
+    this._game.step();
+    this._game.render?.(this._game.data);
+  }
+
+  public clear_click() {
+    for (var i: number = 0; i < this._game.data.length; i++) {
+      for (var j: number = 0; j < this._game.data[i].length; j++) {
+        this._game.data[i][j] = 0;
+      }
+    }
+  }
+
+  public randomize_click() {
+    for (var i: number = 0; i < this._game.data.length; i++) {
+      for (var j: number = 0; j < this._game.data[i].length; j++) {
+        this._game.data[i][j] = Math.floor(Math.random() * 2);
+      }
+    }
+  }
+}
+
+const renderToCanvas = (data: typeof game.data) => {
   for (var i: number = 0; i < data.length; i++) {
     for (var j: number = 0; j < data[i].length; j++) {
       context!.fillStyle = data[i][j] === 1 ? "white" : "black";
@@ -90,23 +173,16 @@ game.render = (data: typeof game.data) => {
   }
 };
 
-const step_button = document.getElementById("button-step") as HTMLButtonElement;
-step_button.onclick = () => {
-  game.step();
-  game.render?.(game.data);
-};
+const template1 = (game: GameOfLife) => {
+  var t = 32;
+  game.data[t + 0][t + 2] = game.data[t + 1][t + 2] = game.data[t + 0][t + 3] 
+  = game.data[t + 1][t + 3] = game.data[t + 2][t + 2] = game.data[t + 2][t + 0] 
+  = game.data[t + 2][t + 1] = game.data[t + 2][t + 2] = game.data[t + 3][t + 1] = 1;
+}
 
-const start_button = document.getElementById("button-start") as HTMLButtonElement;
-start_button.onclick = () => game.start();
+var game = new GameOfLife(128);
+template1(game);
+game.render = renderToCanvas;
 
-const stop_button = document.getElementById("button-stop") as HTMLButtonElement;
-stop_button.onclick = () => game.stop();
-
-const speed_range = document.getElementById('range-speed') as HTMLInputElement;
-const speed_range_indicator = document.getElementById('range-speed-value') as HTMLSpanElement;
-game.speed = speed_range.valueAsNumber;
-speed_range_indicator.innerText = game.speed.toString();
-speed_range.oninput = () => {
-  game.speed = speed_range.valueAsNumber;
-  speed_range_indicator.innerText = game.speed.toString();
-};
+var ui = new GameUI(game);
+ui.init();

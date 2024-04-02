@@ -33,9 +33,14 @@
       <div class="col-sm-6">
         <div class="row">
           <div class="col">
-            <button class="btn btn-primary" id="button-step">Step</button>
-            <button class="btn btn-primary" id="button-start">Start</button>
-            <button class="btn btn-primary" id="button-stop">Stop</button>
+            <button class="btn btn-primary bi bi-skip-end-fill" id="button-step"> Step</button>
+            <button class="btn btn-primary bi bi-play" id="button-play" type="button"> Start</button>
+          </div>
+            <div class="col">
+            
+            <button class="btn btn-primary bi bi-x-lg" id="button-clear"> Clear</button>
+            <button class="btn btn-primary bi bi-shuffle" id="button-random"> Randomize</button>
+            <button class="btn btn-primary bi bi-pencil" id="button-edit"> Edit</button>
           </div>
         </div>
         <div class="row">
@@ -44,6 +49,8 @@
             <span id="range-speed-value"></span>
             <input type="range" class="form-range" id="range-speed" min="1" max="1000" step="1">
           </div>
+          <div class="col">
+            </div>
         </div>
       </div>
     </div>
