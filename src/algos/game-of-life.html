@@ -26,12 +26,25 @@
   <div class="text-center">
     <h1 class="display-5 fw-bold text-body-emphasis">Game of Life</h1>
     <div id="canvas-container" class="text-center row">
-          <div class="col-sm-6">
-            <canvas id="main-canvas" class="border border-5 rounded-1 mw-100"
-                    style="aspect-ratio: 1;"></canvas>
+      <div class="col-sm-6">
+        <canvas id="main-canvas" class="border border-5 rounded-1 mw-100"
+                style="aspect-ratio: 1;"></canvas>
       </div>
       <div class="col-sm-6">
-        <button class="btn btn-primary" id="button-step">Step</button>
+        <div class="row">
+          <div class="col">
+            <button class="btn btn-primary" id="button-step">Step</button>
+            <button class="btn btn-primary" id="button-start">Start</button>
+            <button class="btn btn-primary" id="button-stop">Stop</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label for="range-speed" class="form-label">Speed (ms)</label>
+            <span id="range-speed-value"></span>
+            <input type="range" class="form-range" id="range-speed" min="1" max="1000" step="1">
+          </div>
+        </div>
       </div>
     </div>
   </div>
