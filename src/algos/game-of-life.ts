@@ -33,7 +33,7 @@ class GameOfLife {
     return this.runner !== null;
   }
 
-  render: ((data: typeof this.data) => void) | null = null;
+  renderCell: ((data: number, x: number, y: number) => void) | null = null;
 
   public constructor(size: number) {
     for (var i: number = 0; i < size; i++) {
@@ -44,6 +44,13 @@ class GameOfLife {
     }
   }
 
+  public render() {
+    for (var i: number = 0; i < this.data.length; i++) {
+      for (var j: number = 0; j < this.data[i].length; j++) {
+        this.renderCell?.(this.data[i][j], i, j);
+      }
+    }
+  }
 
   public step() {
     const newdata = this.data.map(arr => arr.slice());
@@ -70,8 +77,8 @@ class GameOfLife {
 
   public start() {
     this.runner = setInterval(() => {
-      this.render?.(this.data);
       this.step();
+      this.render();
     }, this.speed);
   }
 
@@ -121,7 +128,7 @@ class GameUI {
     this.init_controls();
 
 
-    this._game.render?.(this._game.data);
+    this._game.render();
   }
 
   public play_click() {
@@ -142,7 +149,7 @@ class GameUI {
 
   public step_click() {
     this._game.step();
-    this._game.render?.(this._game.data);
+    this._game.render();
   }
 
   public clear_click() {
@@ -151,6 +158,7 @@ class GameUI {
         this._game.data[i][j] = 0;
       }
     }
+    this._game.render();
   }
 
   public randomize_click() {
@@ -159,16 +167,13 @@ class GameUI {
         this._game.data[i][j] = Math.floor(Math.random() * 2);
       }
     }
+    this._game.render();
   }
 }
 
-const renderToCanvas = (data: typeof game.data) => {
-  for (var i: number = 0; i < data.length; i++) {
-    for (var j: number = 0; j < data[i].length; j++) {
-      context!.fillStyle = data[i][j] === 1 ? "white" : "black";
-      context?.fillRect(j * (1024 / data.length), i * (1024 / data.length), 1024 / data.length, 1024 / data[i].length);
-    }
-  }
+const renderToCanvas = (cell: number, i: number, j: number) => {
+  context!.fillStyle = cell === 1 ? "white" : "black";
+  context?.fillRect(j * (mainCanvas.width / game.data.length), i * (mainCanvas.height / game.data[i].length), mainCanvas.width / game.data.length, mainCanvas.height / game.data[i].length);
 };
 
 const template1 = (game: GameOfLife) => {
@@ -180,7 +185,8 @@ const template1 = (game: GameOfLife) => {
 
 var game = new GameOfLife(128);
 template1(game);
-game.render = renderToCanvas;
+game.renderCell = renderToCanvas;
+game.render();
 
 var ui = new GameUI(game);
 ui.init();
