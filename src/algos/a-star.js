@@ -107,7 +107,7 @@ function Cell(x, y, squareSize, type){
     types.set("start", '#27FF00');
     types.set("finish", '#FF0000');
     types.set("routeOpened", '#F8F9F9');
-    types.set("routeClosed", '#F8F9F9');
+    types.set("routeClosed", '#C49BFF');
     types.set("routeIncluded", '#FF004D');
 
     var walkable = false;
@@ -213,12 +213,17 @@ function MinHeap(){
     }
 
     this.pop = function() {//get the top element and delete it from the this.heap
-        var value = this.heap[0];
-        if (value.type != 'start' && value.type != 'finish'){
-            value.changeType('routeClosed'); //???
+        if (this.heap.length > 0){
+            var value = this.heap[0];
+            if (value.type != 'start' && value.type != 'finish'){
+                value.changeType('routeClosed'); //???
+            }
+            this.heap.splice(0, 1);
+            return value;
         }
-        this.heap.splice(0, 1);
-        return value;
+        else{
+            return null;
+        }
     }
 
     this.top = function(){//get the element at the top
@@ -343,38 +348,42 @@ async function exec(){
     grid.startCell.fCost = grid.startCell.gCost + h(grid.startCell);
     openSet.push(grid.startCell);
 
-    while (openSet.length != 0){
-        var currentCell = openSet.top();
-
+    while (openSet.heap.length > 0){
+        await delay(2);
+        var currentCell = openSet.pop();
+        currentCell.changeType("reouteClosed");
+        closedSet.push(currentCell);
 
         if (currentCell == grid.finishCell){
             pathFinder();
             return;
         }
 
-        openSet.pop();
-        closedSet.push(currentCell);
+        
 
         var neighbours = grid.getNeighbours(currentCell);
         neighbours.forEach(neighbour => {
             var tentativeScore = currentCell.gCost + getDistance(currentCell, neighbour);
-            if (closedSet.includes(neighbour) && tentativeScore >= neighbour.gCost){
+            if (closedSet.includes(neighbour) || tentativeScore >= neighbour.gCost){
                 return;
             }
             if (!closedSet.includes(neighbour) || tentativeScore < neighbour.gCost){
                 
                 neighbour.parent = currentCell;
+                console.log('+1');
 
                 neighbour.gCost = g(neighbour);
                 neighbour.fCost = neighbour.gCost + h(neighbour);
                 
-                if (!openSet.heap.includes(neighbour)){
+                if (!openSet.heap.includes(neighbour) && neighbour.walkable){
                     openSet.push(neighbour);
                 }
             }
+            console.log(openSet);
         });
 
     }
+    pathFinder();
 }
 
 var execution = document.getElementById("Start Routing");
