@@ -100,14 +100,14 @@ function getRandomIntFromRange(min, max) {
     const minCeiled = Math.ceil(min);
     const maxFloored = Math.floor(max);
     return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
-  }
+}
   
 
 function generateRandomRoute(cities){
     var citiesCopy = cities.map((x) => x);
     var citiesOrder = [];
     while (citiesCopy.length > 0){
-        var index = getRandomInt(citiesCopy.length - 1); // -1 ???
+        var index = getRandomInt(citiesCopy.length); // -1 ???
         citiesOrder.push(citiesCopy[index]);
         citiesCopy.splice(index, 1);
     }
@@ -119,8 +119,8 @@ function generateRandomRoute(cities){
 //slice for circled arrays
 function smartSlice(array, firstIndex, secondIndex){
     var newArray = [];
-    for (var i = 0; i < Math.abs(secondIndex-firstIndex); i+=1){
-        newArray.push(array[(i + firstIndex) % array.length]);
+    for (var i = firstIndex; i % array.length != secondIndex; i+=1){
+        newArray.push(array[i % array.length]);
     }
     return newArray;
 }
@@ -143,8 +143,8 @@ function shuffleArray(array){
     var first;
     var second;
     while (first == second){
-    first = getRandomInt(route.length);
-    second = getRandomInt(route.length);
+    first = getRandomInt(array.length);
+    second = getRandomInt(array.length);
     }
     var temp = array[first];
     array[first] = array[second];
@@ -191,84 +191,86 @@ function areSetsEqual(first, second){
 
 var flagForTestingCrossingoverTheory = false;
 
-//peculiar crossingover - treats DNA as a circled structure
-function crossingover(firstRoute, secondRoute){
-    var copyFirstRoute = {...firstRoute};
-    var copySecondRoute = {...secondRoute};
-    //cicle this around?
-    var crossingoverStartPos = getRandomIntFromRange(1, firstRoute.length / 2);// or -3?
-    var crossingoverLen = getRandomIntFromRange(2,  Math.floor(firstRoute.length / 2)); // +- ???
-
-    var firstMeiosis = smartSlice(firstRoute.citiesOrder, crossingoverStartPos, crossingoverStartPos + crossingoverLen); // indexes issue
-    var secondMeiosis = smartSlice(secondRoute.citiesOrder, crossingoverStartPos, crossingoverStartPos + crossingoverLen);
-    if (firstMeiosis.length >= firstRoute.citiesOrder.length / 2){
-        console.log("MEIOSIS POTENTIALLY TOO LONG");
+//takes a part of a route and shuffles it multiple times
+function imitateCrossingover(route){
+    var copyCitiesOrder = [];
+    for (var i = 0; i < route.length; i+=1){
+        copyCitiesOrder.push(route.citiesOrder[i]);
     }
-    if (firstMeiosis.length != crossingoverLen){
-        console.log("MEIOSIS POTENTIALLY TOO SHORT");
-    }
+    
+    var crossingoverStartPos = getRandomIntFromRange(1, copyCitiesOrder.length - 1);
+    var crossingoverLength = getRandomIntFromRange(2, copyCitiesOrder.length / 2 + 1);
 
-    var crossingoverSecondStartPos = crossingoverStartPos;
+    var meiosis = smartSlice(route.citiesOrder, crossingoverStartPos, (crossingoverStartPos + crossingoverLength) % route.length);
 
-    for (var i = 0; i < secondRoute.citiesOrder.length; i++){ // "< secondMeiosis.length" or length +- 1 ??
-        if (areSetsEqual(firstMeiosis, secondMeiosis)){
-            flagForTestingCrossingoverTheory = true;
-            break;
-        }
-        crossingoverSecondStartPos += 1;
-        secondMeiosis = smartSlice(secondRoute.citiesOrder, crossingoverStartPos + i, crossingoverStartPos + crossingoverLen + i);
-    }
-    if (!flagForTestingCrossingoverTheory){
-        console.log("CROSSINGOVER FAILED");
+    for (var i = 0; i < getRandomIntFromRange(1, meiosis.length); i+=1){
+        shuffleArray(meiosis);
     }
 
-    //SWAPPING ARRAY ELEMENTS (js links issue)
-    for (var i = 0; i < firstMeiosis.length; i+=1){
-        //[firstMeiosis[i], secondMeiosis[i]] = [secondMeiosis[i], firstMeiosis[i]]; // does this even swap anything?
-        copyFirstRoute[crossingoverStartPos + i] = copySecondRoute[crossingoverSecondStartPos + i];
+    for (var i = crossingoverStartPos; i < crossingoverStartPos + crossingoverLength; i+=1){
+        copyCitiesOrder[i % copyCitiesOrder.length] = meiosis[i - crossingoverStartPos];
     }
 
-    return copyFirstRoute;
+    var newRoute = new Route(copyCitiesOrder);
+
+    return newRoute;
 }
 
 //crossingover for all neighbour-pairs of routes
 function neighbourCrossingover(routes){
-    for (var i = 0; i < routes.length - 2; i+=1){
-        crossingover(routes[i], routes[i+1]);
+    var loopLimit = routes.length;
+    for (var i = 0; i < loopLimit; i+=1){
+        var newRoute = imitateCrossingover(routes[i]);
+        routes.push(newRoute);
     }
+    return routes;
 }
 
 //returns route's length (route starts and ends in the same city)
-function getLength(route){
+function setLength(route){
     var result = 0;
-    for (var i = 0; i < route.length - 1; i+=1){//or - 0?
-        result += getDistance(route[i], route[(i+1)%route.length]);
+    for (var i = 0; i < route.length; i+=1){//or - 1?
+        result += getDistance(route.citiesOrder[i], route.citiesOrder[(i+1)%route.length]);
     }
     route.rLength = result;
 }
 
 function naturalSelection(routes, survivorsQuantity){
+    for (var i = 0; i < routes.length; i+=1){
+        setLength(routes[i]);
+    }
     routes.sort((firstRoute, secondRoute) => {
         return firstRoute.rLength - secondRoute.rLength;
     })
-    return routes.subarray(0, survivorsQuantity); //index issue
+    return routes.slice(0, survivorsQuantity); //index issue
 }
 
 async function exec(){
-    let testPoint3 = new Point(100,200,3);
-    let testPoint4 = new Point(50,43,4);
-    let testPoint5 = new Point(80,23,5);
-    let testPoint6 = new Point(33,11,6);
-    let testPoint7 = new Point(25,45,7);
-    let testArray1 = [testPoint3,testPoint4,testPoint5,testPoint6,testPoint7];
-    let testArray2 = testArray1.slice();
-    testArray2.push(testPoint3);
-    var country = makeFirstPopulation(testArray1, 2);
+    //points
+    if (points.length === 2){
+        updateLines(points);
+        return;
+    }
+    var testSet;
+    var population = makeFirstPopulation(points, 5);
+    for (var i = 0; i < 100; i+=1){
+        population = neighbourCrossingover(population);
+        testSet = new Set(population[0].citiesOrder);
+        if (!testSet.size === population[0].length){
+            console.log("CROSSINGOVER FAILED");
+        }
+        population = naturalSelection(population, 5);
+        if (!testSet.size === population[0].length){
+            console.log("SELECTION FAILED");
+        }
+    }
 
-    var testRoute1 = country[0];
-    var testRoute2 = country[1];
-
-    var testChildRoute = crossingover(testRoute1,testRoute2);
+    var bestRouteFound = population[0];
+    testSet = new Set(bestRouteFound.citiesOrder);
+    if (!testSet.size === population[0].length){
+        console.log("SELECTION FAILED");
+    }
+    updateLines(bestRouteFound.citiesOrder);
 
 }
 
@@ -285,17 +287,20 @@ execution.addEventListener('click', exec);
 
 function updateLines(points){
     var newPoint = points[points.length-1];
-    for (var i = 0; i < points.length - 1; i++){
-        var current = points[i];
-        c.moveTo(newPoint.x, newPoint.y);
-        c.lineTo(current.x, current.y);
+    for (var i = 0; i < points.length; i++){
+        var from = points[i];
+        var to = points[(i+1) % points.length];
+        c.moveTo(from.x, from.y);
+        c.lineTo(to.x, to.y);
         c.strokeStyle = "#c0ff8f";
         c.stroke();
     }
 }
 
+var counter = 1;
 canvas.addEventListener('click', function(event){
     //TODO remove circle outsile (idk why it happens)
+    
     [x, y] = getMousePos(canvas, event);
     c.beginPath();
     c.arc(x, y, 5, 0, Math.PI * 2);
@@ -303,8 +308,9 @@ canvas.addEventListener('click', function(event){
     c.fillStyle = "black";
     c.fill()
     c.stroke();
-    points.push(new Point(x, y));
-    updateLines(points);
+    points.push(new Point(x, y, counter));
+    counter+=1;
+    //updateLines(points);
 });
 
 var resSubBtn = document.getElementById('resolutionSubmitButton');
