@@ -9,7 +9,28 @@ var squareSize = 30;
 var canvas = document.getElementById('a-starCanvas');
 var c = canvas.getContext('2d');
 
+//TODO rectanle for buttons to be on OR removing 
+// var buttonCanvas = document.getElementById('underButtonCanvas');
+// var buttonContext = buttonCanvas.getContext('2d');
+// var buttonPos = document.getElementById("Width and Height");
+// var buttonRect = buttonPos.getBoundingClientRect();
+
+// buttonCanvas.style.left = (buttonRect.left - 25).toString() + "px";
+// buttonCanvas.style.top = (buttonRect.top - 7).toString() + "px";
+// buttonCanvas.style.width = (buttonRect.right - buttonRect.left + 20).toString() + "px";
+// buttonCanvas.style.height = (buttonRect.bottom - buttonRect.top).toString() + "px";
+// buttonCanvas.style.position = "absolute";
+// buttonContext.beginPath();
+// buttonContext.rect(0, 0, 300, 150);
+// buttonContext.fillStyle = "#BDBDBD";
+// buttonContext.fill();
+// buttonContext.lineWidth = 0.3;
+// buttonContext.strokeStyle = "#17202A";
+// buttonContext.stroke();
+
+
 function submitTriggered(){
+    executed = false;
     var errorMessage = document.getElementById('WrongInputError');
 
     var widthEl = document.getElementById('aStarWidth');
@@ -26,7 +47,7 @@ function submitTriggered(){
         height = parseInt(heightEl.value);
     }
     else{
-        width = 37;
+        height = 28;
     }
     if (squareSizeEl.value){
         squareSize = parseInt(squareSizeEl.value);
@@ -41,6 +62,7 @@ function submitTriggered(){
         return;
     }
     else{
+        errorMessage.innerHTML = "";
         canvas.width = width * squareSize;
         canvas.height = height * squareSize;
         fillGridWithRects();
@@ -103,12 +125,12 @@ function Cell(x, y, squareSize, type){
 
     const types = new Map();
     types.set("space", '#F8F9F9');
-    types.set("wall", '#1F221F');
-    types.set("start", '#27FF00');
-    types.set("finish", '#FF0000');
-    types.set("routeOpened", '#F8F9F9');
-    types.set("routeClosed", '#C49BFF');
-    types.set("routeIncluded", '#FF004D');
+    types.set("wall", '#A8A8A8');
+    types.set("start", '#001EC4');
+    types.set("finish", '#C40000');
+    types.set("routeOpened", '#E8D957');
+    types.set("routeClosed", '#C5E857');
+    types.set("routeIncluded", '#FF8213');
 
     var walkable = false;
     if (this.type == "space" || this.type == "routeOpened" || this.type == "finish" || this.type == "start"){
@@ -124,23 +146,17 @@ function Cell(x, y, squareSize, type){
         c.lineWidth = 0.3;
         c.strokeStyle = "#17202A";
         c.stroke();
-        // c.rect(x+5, y+5, squareSize-10, squareSize-10);
-        
-        // c.stroke();
     }
 
     this.changeType = function(type) {
         this.type = type;
         if (this.type == "space" || this.type == "routeOpened" || this.type == "finish" || this.type == "routeIncluded" || this.type == "start"){
-            this.walkable = true;
+            this.walkable = true; 
         }
         else{
             this.walkable = false;
         }
         this.draw();
-        
-        //this.displayFCost();
-        
     }
 
     this.displayFCost = function(){
@@ -156,27 +172,14 @@ function MinHeap(){
 
     this.heap = [];
 
-    this.up = function(index){ //put the element at *index* to a spot so all the this.heap 
-                               //rules are satisfied by moving it up the this.heap
-        //while (index != 0 && this.heap[index].fCost < this.heap[Math.round((index - 1) / 2 - 0.1)].fCost){ //will be float probably
-        while (this.heap[index].fCost < this.heap[Math.round((index - 1) / 2)].fCost){ //will be float probably
+    this.up = function(index){ 
+        while (this.heap[index].fCost < this.heap[Math.round((index - 1) / 2)].fCost){
             [this.heap[index], this.heap[Math.round((index - 1) / 2)]] = [this.heap[Math.round((index - 1) / 2)], this.heap[index]];
             index = Math.round((index - 1) / 2);
         }
-        
-        if (this.heap.length > 0){
-            var min = this.heap[0];
-            for (var i = 0; i < this.heap.length; i+=1){
-                if (min > this.heap[i]){
-                    console.log("SIFTUP INCORRECT PROCEDURE");
-                }
-            }
-        }
-
     }
 
-    this.down = function(index) {//put the element at *index* to a spot so all the this.heap 
-                                 //rules are satisfied by moving it down the this.heap
+    this.down = function(index) {
         while (2 * index + 1 < this.heap.length) {
             
             var left = 2 * index + 1;
@@ -195,16 +198,10 @@ function MinHeap(){
         }
         if (this.heap.length > 0){
             var min = this.heap[0].fCost;
-            for (var i = 0; i < this.heap.length; i+=1){
-                if (min > this.heap[i].fCost){
-                    debugger;
-                    console.log("SIFTDOWN INCORRECT PROCEDURE");
-                }
-            }
         }
     }
 
-    this.push = function(value) {//add a new element to the this.heap while keeping
+    this.push = function(value) {
         if (value.type != "start" && value.type != "finish"){
             value.changeType('routeOpened');
         }
@@ -212,7 +209,7 @@ function MinHeap(){
         this.heap.sort((a, b) => a.fCost - b.fCost);
     }
 
-    this.pop = function() {//get the top element and delete it from the this.heap
+    this.pop = function() {
         if (this.heap.length > 0){
             var value = this.heap[0];
             if (value.type != 'start' && value.type != 'finish'){
@@ -296,7 +293,6 @@ canvas.width = 37 * squareSize;
 canvas.height = 28 * squareSize;
 
 fillGridWithRects();
-//#######################################
 var exploredCells = [];
 
 function getDistance(firstCell, secondCell){
@@ -319,6 +315,11 @@ async function pathFinder(){
     path = [];
     currentCell = grid.finishCell;
 
+    if (typeof currentCell.parent === 'undefined'){
+        document.getElementById("NoPathFound").innerHTML = "No path existing";
+        return;
+    }
+
     while (currentCell != grid.startCell){
         path.push(currentCell);
         currentCell = currentCell.parent;
@@ -326,22 +327,17 @@ async function pathFinder(){
 
     path.reverse();
     for (var i = 0; i < path.length - 1; i += 1){
-        await delay(50);
-        path[i].changeType("routeIncluded")
+        await delay(35);
+        if (path[i].type != "startCell" && path[i].type != "finishCell"){
+            path[i].changeType("routeIncluded");
+        }
     }
-    // for (var i = 0; i < path.length - 1; i += 1){
-    //     c.beginPath();
-    //     c.moveTo(path[i].x + 15, path[i].y + 15);
-    //     c.lineTo(path[i].parent.x + 15, path[i].parent.y + 15);
-    //     c.lineWidth = 5;
-    //     c.stroke();
-    //     path[i].changeType("routeIncluded")
-    // }
 }
 
 
 
 async function exec(){
+    executed = true;
     openSet = new MinHeap;
     closedSet = [];
     grid.startCell.gCost = 0;
@@ -351,15 +347,15 @@ async function exec(){
     while (openSet.heap.length > 0){
         await delay(2);
         var currentCell = openSet.pop();
-        currentCell.changeType("reouteClosed");
+        if (currentCell.type != "finish" && currentCell.type != "start"){
+            currentCell.changeType("reouteClosed");
+        }
         closedSet.push(currentCell);
 
         if (currentCell == grid.finishCell){
             pathFinder();
             return;
         }
-
-        
 
         var neighbours = grid.getNeighbours(currentCell);
         neighbours.forEach(neighbour => {
@@ -376,44 +372,27 @@ async function exec(){
                 neighbour.fCost = neighbour.gCost + h(neighbour);
                 
                 if (!openSet.heap.includes(neighbour) && neighbour.walkable){
+                    console.log("TEST_LOG");
+                    if (neighbour.type != "finish" && neighbour.type != "start"){
+                        neighbour.changeType("routeOpened");
+                    }
                     openSet.push(neighbour);
                 }
             }
-            console.log(openSet);
         });
 
     }
     pathFinder();
 }
 
+var executed = false;
+
 var execution = document.getElementById("Start Routing");
-
-function testFunction(){
-    testOpenSet = new MinHeap;
-
-    testCellOne = new Cell(1, 1, 1, 'space');
-    testCellOne.fCost = 5;
-    testCellTwo = new Cell(1, 1, 1, 'space');
-    testCellTwo.fCost = 1;
-    testCellThree = new Cell(1, 1, 1, 'space');
-    testCellThree.fCost = 7;
-    testCellFour = new Cell(1, 1, 1, 'space');
-    testCellFour.fCost = 3;
-
-    testOpenSet.push(testCellOne);
-    testOpenSet.push(testCellTwo);
-    testOpenSet.push(testCellThree);
-    testOpenSet.push(testCellFour);
-
-    var testArray = testOpenSet.getHeap();
-
-    console.log(testArray);
-}
 
 execution.addEventListener('click', exec);
 
-//#######################################
 var resSubBtn = document.getElementById('resolutionSubmitButton');
+
 resSubBtn.addEventListener('click', submitTriggered);
 
 window.addEventListener('mouseup', function(){
@@ -429,34 +408,36 @@ window.addEventListener('mousedown', function(event){
 });
 
 canvas.addEventListener('mousemove',function(event){
+    if (executed == false){
 
-    var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
-    var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
+        var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
+        var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
 
 
-    if (drag == true){
-        x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
-        y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
-        if (dragType == "space" && grid.matrix[x-1][y-1].type == "space"){
-            grid.matrix[x-1][y-1].changeType("wall");
-        }
-        else if (dragType == "wall" && grid.matrix[x-1][y-1].type == "wall"){
-            grid.matrix[x-1][y-1].changeType("space");
-        }
-        else if (dragType == "start" && grid.matrix[x-1][y-1].type == "space"){
-            if (grid.startCell != grid.matrix[x-1][y-1])
-            {
-                grid.startCell.changeType("space");
-                grid.matrix[x-1][y-1].changeType("start");
-                grid.startCell = grid.matrix[x-1][y-1];
+        if (drag == true){
+            x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
+            y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
+            if (dragType == "space" && grid.matrix[x-1][y-1].type == "space"){
+                grid.matrix[x-1][y-1].changeType("wall");
             }
-        }
-        else if (dragType == "finish" && grid.matrix[x-1][y-1].type == "space"){
-            if (grid.finishCell != grid.matrix[x-1][y-1])
-            {
-                grid.finishCell.changeType("space");
-                grid.matrix[x-1][y-1].changeType("finish");
-                grid.finishCell = grid.matrix[x-1][y-1];
+            else if (dragType == "wall" && grid.matrix[x-1][y-1].type == "wall"){
+                grid.matrix[x-1][y-1].changeType("space");
+            }
+            else if (dragType == "start" && grid.matrix[x-1][y-1].type == "space"){
+                if (grid.startCell != grid.matrix[x-1][y-1])
+                {
+                    grid.startCell.changeType("space");
+                    grid.matrix[x-1][y-1].changeType("start");
+                    grid.startCell = grid.matrix[x-1][y-1];
+                }
+            }
+            else if (dragType == "finish" && grid.matrix[x-1][y-1].type == "space"){
+                if (grid.finishCell != grid.matrix[x-1][y-1])
+                {
+                    grid.finishCell.changeType("space");
+                    grid.matrix[x-1][y-1].changeType("finish");
+                    grid.finishCell = grid.matrix[x-1][y-1];
+                }
             }
         }
     }

@@ -32,7 +32,15 @@
     <div class="text-center">
       <h1 class="display-5 fw-bold text-body-emphasis" style="margin-top: 0%;">A⍟ algorithm</h1>
     </div>
-    <div class="Width and Height" style="position: absolute; top: 25%; right: 5%;">
+    <div id="canvas-element"></div>
+      <!-- Canvas -->
+      <canvas id="a-starCanvas" style="position:relative; bottom: 0%; left: -250px"></canvas>
+    </div>
+    <!-- <div id="canvas-element" style="color:rgb(211, 211, 211)"></div> -->
+      <!-- Canvas for underbutton rectangle -->
+      <!-- <canvas id="underButtonCanvas"></canvas> -->
+    <!-- </div> -->
+    <div class="Width and Height" id = "Width and Height" style="position: absolute; top: 25%; right: 5%;">
       <!-- Width Button -->
       <label for="aStarWidth">Width: </label>
       <input type = "number" id="aStarWidth" name="Width" style="width: 50px;" placeholder="37" required>
@@ -42,17 +50,13 @@
       <!-- SquareSize Button -->
       <label for="aStarSquareSize">Square Size: </label>
       <input type = "text" id="aStarSquareSize" name="SquareSize" style="width: 50px;" placeholder="30">
-
       <input type="submit" id="resolutionSubmitButton" value="Submit"></input>
       <button type="button" id="Start Routing">Start algorithm</button>
       <p id="WrongInputError"> </p>
+      <p id="NoPathFound"> </p>
     </div>
     <!-- <div class="col-lg-6 container-lg" id="canvas-container" style="position: absolute; top: 60%; left: 10%"></div> -->
-    <div id="canvas-element"></div>
-      <!-- Canvas -->
-      <canvas id="a-starCanvas" style="position:relative; bottom: 0%; left: -250px"></canvas>
-      <script src="./a-star.js"></script>
-    </div>
+    <script src="./a-star.js"></script>
     <footer class="py-3 my-4 border-top">
       <p class="text-center text-body-secondary">© 2024 D. Pokhabov, I. Uymanov, N. Andreyanov</p>
     </footer>
