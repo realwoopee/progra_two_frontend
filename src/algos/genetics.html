@@ -22,9 +22,10 @@
 
       <ul class="nav nav-pills">
         <li class="nav-item"><a href="example.html" class="nav-link">Example</a></li>
-        <li class="nav-item"><a href="a-star.html"  class="nav-link active" aria-current="page">A&starf;</a></li>
+        <li class="nav-item"><a href="a-star.html"  class="nav-link" aria-current="page">A&starf;</a></li>
         <li class="nav-item"><a href="cluster.html" class="nav-link">Clusterisation</a></li>
         <li class="nav-item"><a href="game-of-life.html" class="nav-link">Game Of Life</a></li>
+        <li class="nav-item"><a href="algos\genetics.html" class="nav-link active">Genetics</a></li>
       </ul>
     </header>
     <!-- TODO: заменить обычный style на бутстраповский -->
@@ -40,18 +41,9 @@
       <!-- Canvas for underbutton rectangle -->
       <!-- <canvas id="underButtonCanvas"></canvas> -->
     <!-- </div> -->
-    <div class="Width and Height" id = "Width and Height" style="position: absolute; top: 25%; right: 5%;">
-      <!-- Width Button -->
-      <label for="aStarWidth">Width: </label>
-      <input type = "number" id="aStarWidth" name="Width" style="width: 50px;" placeholder="37" required>
-      <!-- Height Button -->
-      <label for="aStarHeight">Height: </label>
-      <input type = "number" id="aStarHeight" name="Height" style="width: 50px;" placeholder="28" required>
-      <!-- SquareSize Button -->
-      <label for="aStarSquareSize">Square Size: </label>
-      <input type = "text" id="aStarSquareSize" name="SquareSize" style="width: 50px;" placeholder="30">
-      <input type="submit" id="resolutionSubmitButton" value="Submit"></input>
-      <button type="button" id="Start Routing">Start algorithm</button>
+    <div id = "Width and Height" style="position: absolute; top: 25%; right: 30%;">
+      <input type="submit" id="clear" value="Clear"></input>
+      <button type="button" id="executeAlgorithm">Start algorithm</button>
       <p id="WrongInputError"> </p>
       <p id="NoPathFound"> </p>
     </div>

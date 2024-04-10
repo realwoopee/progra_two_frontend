@@ -1,7 +1,3 @@
-function clearCanvas(){
-    c.clearRect(0, 0, canvas.width, canvas.height );
-}
-
 var width = 37;
 var height = 28;
 var squareSize = 30;
@@ -12,10 +8,14 @@ var c = canvas.getContext('2d');
 canvas.width = 1000;
 canvas.height = 750;
 
-c.beginPath();
-c.rect(0, 0, 1000, 750);
-c.fillStyle = "#ffffff";
-c.fill();
+function clearCanvas(){
+    c.clearRect(0, 0, canvas.width, canvas.height );
+    c.beginPath();
+    c.rect(0, 0, canvas.width, canvas.height);
+    c.fillStyle = "#ffffff";
+    c.fill();
+}
+clearCanvas();
 
 function Point(x, y, number){
     this.x = x;
@@ -67,7 +67,6 @@ function submitTriggered(){
         errorMessage.innerHTML = "";
         canvas.width = width * squareSize;
         canvas.height = height * squareSize;
-        fillGridWithRects();
     }
 
 
@@ -75,6 +74,17 @@ function submitTriggered(){
 
 
 var points = [];
+
+function showPoints(points){
+    for (var i = 0;  i < points.length; i+=1){
+        c.beginPath();
+        c.arc(points[i].x, points[i].y, 5, 0, Math.PI * 2);
+        c.strokeStyle = "#000000";
+        c.fillStyle = "black";
+        c.fill()
+        c.stroke();
+    }
+}
 
 function Route(citiesOrder){
     this.citiesOrder = citiesOrder;
@@ -246,14 +256,16 @@ function naturalSelection(routes, survivorsQuantity){
 }
 
 async function exec(){
-    //points
+    clearCanvas();
+    showPoints(points);
+
     if (points.length === 2){
         updateLines(points);
         return;
     }
     var testSet;
     var population = makeFirstPopulation(points, 5);
-    for (var i = 0; i < 100; i+=1){
+    for (var i = 0; i < 1000; i+=1){
         population = neighbourCrossingover(population);
         testSet = new Set(population[0].citiesOrder);
         if (!testSet.size === population[0].length){
@@ -276,7 +288,12 @@ async function exec(){
 
 var executed = false;
 
-var execution = document.getElementById("Start Routing");
+var execution = document.getElementById('executeAlgorithm');
+
+function destroyCities(){
+    clearCanvas();
+    points = [];
+}
 
 function getMousePos(canvas, evt) {
     var rect = canvas.getBoundingClientRect();
@@ -292,28 +309,29 @@ function updateLines(points){
         var to = points[(i+1) % points.length];
         c.moveTo(from.x, from.y);
         c.lineTo(to.x, to.y);
-        c.strokeStyle = "#c0ff8f";
+        c.strokeStyle = "#900c3f";
         c.stroke();
     }
 }
 
 var counter = 1;
 canvas.addEventListener('click', function(event){
-    //TODO remove circle outsile (idk why it happens)
+    //TODO remove circle outline (idk why it happens)
     
     [x, y] = getMousePos(canvas, event);
     c.beginPath();
     c.arc(x, y, 5, 0, Math.PI * 2);
-    c.strokeStyle = "#000000";
+    c.strokeStyle = "#818181";
     c.fillStyle = "black";
     c.fill()
     c.stroke();
     points.push(new Point(x, y, counter));
     counter+=1;
-    //updateLines(points);
 });
 
-var resSubBtn = document.getElementById('resolutionSubmitButton');
+var clearBtn = document.getElementById('clear');
+
+clearBtn.addEventListener("click", destroyCities);
 
 window.addEventListener('mouseup', function(){
     
