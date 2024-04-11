@@ -109,6 +109,18 @@ function Grid(x, y){
         return neighbours;
     }
 
+    this.connections = function(cell){
+        
+        var positions = [[-1, 0],[1, 0],[0, -1],[0, 1]];
+        
+        for (var i = 0; i < positions.length; i+=1){
+            var checkX = cell.xIndex + positions[i][0];
+            var checkY = cell.yIndex + positions[i][1];
+            if (checkX > -1 && checkX < this.matrix.length && checkY > -1 && checkY < this.matrix[0].length){
+                cell.connections.push(this.matrix[checkX][checkY]);
+            }
+        }
+    }
 } 
 
 function Cell(x, y, squareSize, type){
@@ -122,6 +134,7 @@ function Cell(x, y, squareSize, type){
     this.hCost;
     this.fCost = this.gCost + this.hCost;
     this.parent;
+    this.connections = [];
 
     const types = new Map();
     types.set("space", '#F8F9F9');
@@ -165,6 +178,8 @@ function Cell(x, y, squareSize, type){
         c.clearRect(this.x+5, this.y+5, squareSize-5, squareSize-5 );
         c.fillText(this.fCost, this.x, this.y + 15);
     }
+
+    
 
 }
 
@@ -258,6 +273,13 @@ function fillGridWithRects(){
         }
         row += 1;
     }
+
+    for (var i = 0; i < grid.matrix.length; i+=1){
+        for (var j = 0; j < grid.matrix[0].length; j+=1){
+            grid.matrix[i][j].connections = grid.connections(grid.matrix[i][j]);
+        }
+    }
+
     grid.matrix[Math.round(grid.matrix.length / 3)][Math.round(grid.matrix[0].length / 2)].changeType("start");
     grid.matrix[Math.round(grid.matrix.length / 3 * 2)][Math.round(grid.matrix[0].length / 2)].changeType("finish");
     grid.startCell = grid.matrix[Math.round(grid.matrix.length / 3)][Math.round(grid.matrix[0].length / 2)];
@@ -265,6 +287,7 @@ function fillGridWithRects(){
 
     grid.x = grid.matrix.length;
     grid.y = grid.matrix[0].length;
+    console.log(grid);
 }
 
 var g = function(cell){
