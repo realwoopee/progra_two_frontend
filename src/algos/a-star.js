@@ -28,6 +28,16 @@ var c = canvas.getContext('2d');
 // buttonContext.strokeStyle = "#17202A";
 // buttonContext.stroke();
 
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+    
+}
+
+function getRandomIntFromRange(min, max) {
+    const minCeiled = Math.ceil(min);
+    const maxFloored = Math.floor(max);
+    return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
+}
 
 function submitTriggered(){
     executed = false;
@@ -109,18 +119,7 @@ function Grid(x, y){
         return neighbours;
     }
 
-    this.connections = function(cell){
-        
-        var positions = [[-1, 0],[1, 0],[0, -1],[0, 1]];
-        
-        for (var i = 0; i < positions.length; i+=1){
-            var checkX = cell.xIndex + positions[i][0];
-            var checkY = cell.yIndex + positions[i][1];
-            if (checkX > -1 && checkX < this.matrix.length && checkY > -1 && checkY < this.matrix[0].length){
-                cell.connections.push(this.matrix[checkX][checkY]);
-            }
-        }
-    }
+    
 } 
 
 function Cell(x, y, squareSize, type){
@@ -274,11 +273,11 @@ function fillGridWithRects(){
         row += 1;
     }
 
-    for (var i = 0; i < grid.matrix.length; i+=1){
-        for (var j = 0; j < grid.matrix[0].length; j+=1){
-            grid.matrix[i][j].connections = grid.connections(grid.matrix[i][j]);
-        }
-    }
+    // for (var i = 0; i < grid.matrix.length; i+=1){
+    //     for (var j = 0; j < grid.matrix[0].length; j+=1){
+    //         grid.matrix[i][j].connections = grid.connections(grid.matrix[i][j]);
+    //     }
+    // }
 
     grid.matrix[Math.round(grid.matrix.length / 3)][Math.round(grid.matrix[0].length / 2)].changeType("start");
     grid.matrix[Math.round(grid.matrix.length / 3 * 2)][Math.round(grid.matrix[0].length / 2)].changeType("finish");
@@ -306,6 +305,158 @@ var h = function(cell){
         return 14 * xDist + 10 * (yDist - xDist);
     }
 
+
+}
+
+function updateToCheck(toCheck, cell){
+    if (cell.xIndex + 2 < grid.matrix.length){
+        if (grid.matrix[cell.xIndex + 2][cell.yIndex].type == "wall"){
+            toCheck.push(grid.matrix[cell.xIndex + 2][cell.yIndex]);
+        }
+    }
+
+    if (cell.xIndex - 2 > 0){
+        if (grid.matrix[cell.xIndex - 2][cell.yIndex].type == "wall"){
+            toCheck.push(grid.matrix[cell.xIndex - 2][cell.yIndex]);
+        }
+    }
+
+    if (cell.yIndex + 2 < grid.matrix[0].length){
+        if (grid.matrix[cell.xIndex][cell.yIndex + 2].type == "wall"){
+            toCheck.push(grid.matrix[cell.xIndex][cell.yIndex + 2]);
+        }
+    }
+    
+    if (cell.yIndex - 2 > 0){
+        if (grid.matrix[cell.xIndex][cell.yIndex - 2].type == "wall"){
+            toCheck.push(grid.matrix[cell.xIndex][cell.yIndex - 2]);
+        }
+    }
+}
+
+function connectSpaces(cell){
+
+    while (true){
+
+        var randomDirection = getRandomInt(4);
+
+        if (cell.xIndex + 2 < grid.matrix.length && randomDirection == 0){
+            if (grid.matrix[cell.xIndex + 2][cell.yIndex].type == "space"){
+                grid.matrix[cell.xIndex + 1][cell.yIndex].changeType("space");
+                return;
+            }
+        }
+
+        if (cell.xIndex - 2 > 0 && randomDirection == 1){
+            if (grid.matrix[cell.xIndex - 2][cell.yIndex].type == "space"){
+                grid.matrix[cell.xIndex - 1][cell.yIndex].changeType("space");
+                return;
+            }
+        }
+
+        if (cell.yIndex + 2 < grid.matrix[0].length && randomDirection == 2){
+            if (grid.matrix[cell.xIndex][cell.yIndex + 2].type == "space"){
+                grid.matrix[cell.xIndex][cell.yIndex + 1].changeType("space");
+                return;
+            }
+        }
+        
+        if (cell.yIndex - 2 > 0 && randomDirection == 3){
+            if (grid.matrix[cell.xIndex][cell.yIndex - 2].type == "space"){
+                grid.matrix[cell.xIndex][cell.yIndex - 1].changeType("space");
+                return;
+            }
+        }
+    }   
+}
+
+function placeStart(){
+    for (var i = 1; i < grid.matrix.length - 1; i+=1){
+        for (var j = 1; j < grid.matrix[0].length - 1; j+=1){
+            if (grid.matrix[i][j].type == "space"){
+                grid.matrix[i][j].changeType("start");
+                grid.startCell = grid.matrix[i][j];
+                return;
+            }
+        }
+    }
+}
+
+function placeFinish(){
+    for (var i = grid.matrix.length - 1; i > 1; i-=1){
+        for (var j = grid.matrix[0].length - 1; j > 1; j-=1){
+            if (grid.matrix[i][j].type == "space"){
+                grid.matrix[i][j].changeType("finish");
+                grid.finishCell = grid.matrix[i][j];
+                return;
+            }
+        }
+    }
+}
+
+async function generateMaze(){
+    clearCanvas();
+    fillGridWithRects();
+    for (var i = 0; i < grid.matrix.length; i+=1){
+        for (var j = 0; j < grid.matrix[0].length; j+=1){
+            grid.matrix[i][j].changeType("wall");
+        }
+    }
+
+    for (var i = 0; i < grid.matrix.length; i+=1){
+        grid.matrix[i][0].changeType("space");
+        grid.matrix[i][grid.matrix[0].length - 1].changeType("space");
+    }
+
+    for (var i = 0; i < grid.matrix[0].length; i+=1){
+        grid.matrix[0][i].changeType("space");
+        grid.matrix[grid.matrix.length - 1][i].changeType("space");
+    }
+
+    var curCell = grid.matrix[getRandomInt((grid.matrix.length - 1) / 2) * 2 + 1][getRandomInt((grid.matrix[0].length - 1) / 2) * 2 + 1];
+    curCell.changeType("space");
+    var toCheck = [];
+    updateToCheck(toCheck, curCell);
+
+    while (toCheck.length > 0){
+        var randIndex = getRandomInt(toCheck.length);
+        while (toCheck.length > 0 && toCheck[randIndex].type == "space"){
+            toCheck.splice(randIndex, 1);
+            randIndex = getRandomInt(toCheck.length);
+        }
+        if (randIndex % 3 == 0){
+            randIndex = getRandomInt(toCheck.length / 2);
+        }
+        else{
+            randIndex = getRandomIntFromRange(toCheck.length / 2, toCheck.length);
+        }
+        if (randIndex < toCheck.length){
+            var randCell = toCheck[randIndex];
+            randCell.changeType("space");
+            toCheck.splice(randIndex, 1);
+            connectSpaces(randCell);
+            updateToCheck(toCheck, randCell);
+            await delay(5);
+        }
+    }
+    
+    
+
+    for (var i = 0; i < grid.matrix.length; i+=1){
+        grid.matrix[i][0].changeType("wall");
+        grid.matrix[i][grid.matrix[0].length - 1].changeType("wall");
+        await delay(1);
+    }
+
+    for (var i = 0; i < grid.matrix[0].length; i+=1){
+        grid.matrix[0][i].changeType("wall");
+        grid.matrix[grid.matrix.length - 1][i].changeType("wall");
+        await delay(1);
+    }
+
+    placeStart();
+    placeFinish();
+    
 
 }
 
@@ -413,6 +564,10 @@ var executed = false;
 var execution = document.getElementById("Start Routing");
 
 execution.addEventListener('click', exec);
+
+var maze = document.getElementById("generateMaze");
+
+maze.addEventListener('click', generateMaze);
 
 var resSubBtn = document.getElementById('resolutionSubmitButton');
 
