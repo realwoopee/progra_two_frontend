@@ -18,10 +18,11 @@
         <li class="nav-item"><a href="a-star.html"  class="nav-link active" aria-current="page">A&starf;</a></li>
         <li class="nav-item"><a href="cluster.html" class="nav-link">Clusterisation</a></li>
         <li class="nav-item"><a href="game-of-life.html" class="nav-link">Game Of Life</a></li>
+        <li class="nav-item"><a href="algos\genetics.html" class="nav-link">Genetics</a></li>
       </ul>
     </header>
     <div class="px-4 py-5 my-5 text-center">
-      <h1 class="display-5 fw-bold text-body-emphasis">A* algorithm</h1>s
+      <h1 class="display-5 fw-bold text-body-emphasis">A* algorithm</h1>
     </div>
 <!-- <<<<<<< Updated upstream -->
     <div id="canvas-element"></div>
@@ -38,7 +39,7 @@
       <input type = "number" id="aStarWidth" name="Width" style="width: 50px;" placeholder="37" required>
       <!-- Height Button -->
       <label for="aStarHeight">Height: </label>
-      <input type = "number" id="aStarHeight" name="Height" style="width: 50px;" placeholder="28" required>
+      <input type = "number" id="aStarHeight" name="Height" style="width: 50px;" placeholder="29" required>
       <!-- SquareSize Button -->
       <label for="aStarSquareSize">Square Size: </label>
       <input type = "text" id="aStarSquareSize" name="SquareSize" style="width: 50px;" placeholder="30">
@@ -48,6 +49,7 @@
       <button type="submit" id="generateMaze">Generate Maze</button>
       <p id="WrongInputError"> </p>
       <p id="NoPathFound"> </p>
+      <p id="incorrectGridProperties"> </p>
     </div>
     <!-- <div class="col-lg-6 container-lg" id="canvas-container" style="position: absolute; top: 60%; left: 10%"></div> -->
     <script src="./a-star.js"></script>

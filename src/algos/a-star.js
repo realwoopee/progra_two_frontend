@@ -40,6 +40,9 @@ function getRandomIntFromRange(min, max) {
 }
 
 function submitTriggered(){
+    if (executed){
+        return;
+    }
     executed = false;
     var errorMessage = document.getElementById('WrongInputError');
 
@@ -57,7 +60,7 @@ function submitTriggered(){
         height = parseInt(heightEl.value);
     }
     else{
-        height = 28;
+        height = 29;
     }
     if (squareSizeEl.value){
         squareSize = parseInt(squareSizeEl.value);
@@ -395,6 +398,12 @@ function placeFinish(){
 }
 
 async function generateMaze(){
+    if (executed == true){
+        return;
+    }
+
+    executed = true;
+
     clearCanvas();
     fillGridWithRects();
     for (var i = 0; i < grid.matrix.length; i+=1){
@@ -413,10 +422,28 @@ async function generateMaze(){
         grid.matrix[grid.matrix.length - 1][i].changeType("space");
     }
 
-    var curCell = grid.matrix[getRandomInt((grid.matrix.length - 1) / 2) * 2 + 1][getRandomInt((grid.matrix[0].length - 1) / 2) * 2 + 1];
+    var randX;
+    var randY;
+    if (grid.matrix.length % 2 != 0){
+        randX = getRandomIntFromRange(1, (grid.matrix.length - 2) / 2) * 2 + 1;
+    }
+    else{
+        randX = getRandomIntFromRange(1, (grid.matrix.length) / 2) * 2;
+    }
+
+    if (grid.matrix[0].length % 2 != 0){
+        randY = getRandomIntFromRange(1, (grid.matrix[0].length - 2) / 2) * 2 + 1;
+    }
+    else{
+        randY = getRandomIntFromRange(1, (grid.matrix[0].length) / 2) * 2;
+    }
+
+    var curCell = grid.matrix[randX][randY];
     curCell.changeType("space");
     var toCheck = [];
     updateToCheck(toCheck, curCell);
+
+    var smartDelay = 2000 / (grid.matrix.length * grid.matrix[0].length); 
 
     while (toCheck.length > 0){
         var randIndex = getRandomInt(toCheck.length);
@@ -436,7 +463,7 @@ async function generateMaze(){
             toCheck.splice(randIndex, 1);
             connectSpaces(randCell);
             updateToCheck(toCheck, randCell);
-            await delay(5);
+            await delay(smartDelay);
         }
     }
     
@@ -445,18 +472,37 @@ async function generateMaze(){
     for (var i = 0; i < grid.matrix.length; i+=1){
         grid.matrix[i][0].changeType("wall");
         grid.matrix[i][grid.matrix[0].length - 1].changeType("wall");
-        await delay(1);
+        await delay(smartDelay);
     }
 
     for (var i = 0; i < grid.matrix[0].length; i+=1){
         grid.matrix[0][i].changeType("wall");
         grid.matrix[grid.matrix.length - 1][i].changeType("wall");
-        await delay(1);
+        await delay(smartDelay);
+    }
+
+    if (grid.matrix[0].length % 2 == 0){
+        for (var i = 1; i < grid.matrix.length - 1; i+=1){
+            if (grid.matrix[i][2].type != "wall"){
+                grid.matrix[i][1].changeType("space");
+            }
+            await delay(smartDelay);
+        }
+    }
+
+    if (grid.matrix.length % 2 == 0){
+        for (var i = 1; i < grid.matrix[0].length - 1; i+=1){
+            if (grid.matrix[2][i].type != "wall"){
+                grid.matrix[1][i].changeType("space");
+            }
+            await delay(5);
+        }
     }
 
     placeStart();
     placeFinish();
     
+    executed = false;
 
 }
 
@@ -464,7 +510,7 @@ var drag = false;
 var dragType;
 
 canvas.width = 37 * squareSize;
-canvas.height = 28 * squareSize;
+canvas.height = 29 * squareSize;
 
 fillGridWithRects();
 var exploredCells = [];
@@ -506,11 +552,15 @@ async function pathFinder(){
             path[i].changeType("routeIncluded");
         }
     }
+    executed = false;
 }
 
 
 
 async function exec(){
+    if (executed == true){
+        return;
+    }
     executed = true;
     openSet = new MinHeap;
     closedSet = [];
@@ -556,7 +606,6 @@ async function exec(){
         });
 
     }
-    pathFinder();
 }
 
 var executed = false;
