@@ -77,10 +77,10 @@ function submitTriggered(){
 
 var cities = [];
 
-function showPoints(points){
-    for (var i = 0;  i < points.length; i+=1){
+function showPoints(cities){
+    for (var i = 0;  i < cities.length; i+=1){
         c.beginPath();
-        c.arc(points[i].x, points[i].y, 5, 0, Math.PI * 2);
+        c.arc(cities[i].x, cities[i].y, 5, 0, Math.PI * 2);
         c.strokeStyle = "#000000";
         c.fillStyle = "black";
         c.fill()
@@ -99,7 +99,7 @@ function Path(firstCity, secondCity){
     this.pheromones;
 }
 
-//gets the distance between two points
+//gets the distance between two cities
 function getDistance(firstPoint, secondPoint){
     return Math.sqrt(Math.pow(firstPoint.x - secondPoint.x, 2) + Math.pow(firstPoint.y - secondPoint.y, 2));
 }
@@ -167,7 +167,7 @@ var execution = document.getElementById('executeAlgorithm');
 function destroyCities(){
     if (!beingExecuted){
         clearCanvas();
-        points = [];
+        cities = [];
     }
 }
 
@@ -178,11 +178,11 @@ function getMousePos(canvas, evt) {
 
 execution.addEventListener('click', exec);
 
-function updateLines(points){
-    var newPoint = points[points.length-1];
-    for (var i = 0; i < points.length; i++){
-        var from = points[i];
-        var to = points[(i+1) % points.length];
+function updateLines(cities){
+    var newPoint = cities[cities.length-1];
+    for (var i = 0; i < cities.length; i++){
+        var from = cities[i];
+        var to = cities[(i+1) % cities.length];
         c.moveTo(from.x, from.y);
         c.lineTo(to.x, to.y);
         c.strokeStyle = "#900c3f";
@@ -201,7 +201,7 @@ canvas.addEventListener('click', function(event){
         c.fillStyle = "black";
         c.fill()
         c.stroke();
-        points.push(new Point(x, y, counter));
+        cities.push(new Point(x, y, counter));
         counter+=1;
     }
 });
