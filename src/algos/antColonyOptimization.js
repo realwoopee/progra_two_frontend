@@ -84,6 +84,85 @@ function submitTriggered(){
 
 }
 
+function Ant(x, y){
+    this.x = x;
+    this.y = y;
+    this.hasFood = false;
+
+    this.pheromoneType = "private";
+    this.pathToNest = [];
+    this.state = "roaming";//roaming carrying
+    var circleOfDirections = ["up", "upRight", "right", "downRight", "down", "downLeft", "left", "upLeft"];
+    this.direction = circleOfDirections[getRandomInt(8)];
+    const pheromoneTypes = new Map();
+    pheromoneTypes.set("private", '#3395FF');
+    pheromoneTypes.set("attractive", '#FF3390');
+
+    this.move = function(){
+        if (this.state == "roaming"){
+            var newPosition = this.getNeighboursInDirection();
+            if (grid.matrix[this.x][this.y].type != "nest"){
+                grid.matrix[this.x][this.y].changeType("space");
+            }
+            [this.x, this.y] = [newPosition[0], newPosition[1]];
+            if (grid.matrix[this.x][this.y].type == "space"){
+                grid.matrix[this.x][this.y].changeType("ant");
+            }
+            this.direction = newPosition[2];
+        }
+    }
+     
+    this.turn = function(counterClockWise = false){
+        
+        if (!counterClockWise){
+            this.direction = circleOfDirections[(circleOfDirections.indexOf(this.direction) + 3) % 8];
+        }
+        else{
+            this.direction = circleOfDirections[(circleOfDirections.indexOf(this.direction) + 5) % 8];
+        }
+    }
+
+    this.getNeighboursInDirection = function(){
+        indexesAndDirectionCorelation = new Map();
+        indexesAndDirectionCorelation.set("up", [[this.x - 1, this.y - 1, 7], [this.x, this.y - 1, 0], [this.x + 1, this.y - 1, 1]]);
+        indexesAndDirectionCorelation.set("down", [[this.x - 1, this.y + 1, 5], [this.x, this.y + 1, 4], [this.x + 1, this.y + 1, 3]]);
+        indexesAndDirectionCorelation.set("left", [[this.x - 1, this.y - 1, 7], [this.x - 1, this.y, 6], [this.x - 1, this.y + 1, 5]]);
+        indexesAndDirectionCorelation.set("right", [[this.x + 1, this.y - 1, 1], [this.x + 1, this.y, 2], [this.x + 1, this.y + 1, 3]]);
+        indexesAndDirectionCorelation.set("upRight", [[this.x, this.y - 1, 0], [this.x + 1, this.y - 1, 1], [this.x + 1, this.y, 2]]);
+        indexesAndDirectionCorelation.set("upLeft", [[this.x - 1, this.y, 6], [this.x - 1, this.y - 1, 7], [this.x, this.y - 1, 0]]);
+        indexesAndDirectionCorelation.set("downRight", [[this.x, this.y + 1, 4], [this.x + 1, this.y + 1, 3], [this.x + 1, this.y, 2]]);
+        indexesAndDirectionCorelation.set("downLeft", [[this.x - 1, this.y, 6], [this.x - 1, this.y + 1, 5], [this.x, this.y + 1, 4]]);
+
+        
+        var objectWithPossibleCells = indexesAndDirectionCorelation.get(this.direction);
+        var neighbourCells = [];
+        objectWithPossibleCells.forEach((pair) => {
+            if (grid.inBounds(pair[0],pair[1])){
+                neighbourCells.push(grid.matrix[pair[0]][pair[1]]);
+            }
+        });
+        objectWithPossibleCells = grid.selectValidObjects(neighbourCells);
+        console.log(objectWithPossibleCells);
+        var counterClockWise = getRandomInt(2);
+        while (Object.keys(objectWithPossibleCells).length == 0){
+            this.turn(counterClockWise);
+            
+            objectWithPossibleCells = indexesAndDirectionCorelation.get(this.direction);
+            neighbourCells = [];
+            objectWithPossibleCells.forEach((pair) => {
+                if (grid.inBounds(pair[0], pair[1])){
+                    neighbourCells.push(grid.matrix[pair[0]][pair[1]]);
+                }
+            });
+            objectWithPossibleCells = grid.selectValidObjects(neighbourCells);
+        }
+        var randomDirection = getRandomInt(Object.keys(objectWithPossibleCells).length);
+        var newPosition = objectWithPossibleCells[randomDirection];
+        var result = [newPosition.xIndex, newPosition.yIndex, circleOfDirections[indexesAndDirectionCorelation.get(this.direction)[randomDirection][2]]];
+        return result;
+    }
+}
+
 function Grid(x, y){
     
 
@@ -114,8 +193,54 @@ function Grid(x, y){
         return neighbours;
     }
 
+    this.objInBounds= function(obj){
+        var x = obj.x;
+        var y = obj.y;
+        if (x < 0 || x >= this.matrix.length || y < 0 || y >= this.matrix[0].length){
+            return false;
+        }
+        return true;
+    }
+
+    this.inBounds = function(x, y){
+        if (x < 0 || x >= this.matrix.length || y < 0 || y >= this.matrix[0].length){
+            return false;
+        }
+        return true;
+    }
+
+    this.cellInBounds = function(cell){
+        var x = cell.xIndex;
+        var y = cell.yIndex;
+        if (x < 0 || x >= this.matrix.length || y < 0 || y >= this.matrix[0].length){
+            return false;
+        }
+        return true;
+    }
     
+    this.selectValidObjects = function(arrayOfObjects){
+        var copy = arrayOfObjects;
+        var iterator = 0;
+        var copyLength = copy.length;
+        for (var i = 0; i < copyLength; i+=1){
+            try{
+                if (!this.inBounds(copy[iterator].xIndex, copy[iterator].yIndex) || !this.matrix[copy[iterator].xIndex][copy[iterator].yIndex].walkable){
+                    copy.splice(iterator, 1);
+                    iterator -= 1;
+                }
+            } catch (error) {
+                console.error(error);
+            }
+            iterator+=1;
+        }
+        return copy;
+    }
 } 
+
+function MyObject(x, y){
+    this.x = x;
+    this.y = y;
+}
 
 function Cell(x, y, squareSize, type){
     this.x = x;
@@ -153,7 +278,7 @@ function Cell(x, y, squareSize, type){
 
     this.changeType = function(type) {
         this.type = type;
-        if (this.type == "space" || this.type == "routeOpened" || this.type == "finish" || this.type == "routeIncluded" || this.type == "start"){
+        if (this.type == "space" || this.type == "routeOpened" || this.type == "finish" || this.type == "routeIncluded" || this.type == "start" || this.type == "ant"){
             this.walkable = true; 
         }
         else{
@@ -358,7 +483,7 @@ function placeNest(){
         for (var j = Math.floor(grid.matrix[0].length/2); j < grid.matrix[0].length - 1; j+=1){
             if (grid.matrix[i][j].type == "space"){
                 grid.matrix[i][j].changeType("nest");
-                grid.nest = grid.matrix[i][j];
+                grid.nestCell = grid.matrix[i][j];
                 return;
             }
         }
@@ -530,7 +655,17 @@ async function exec(){
         return;
     }
     executed = true;
-    
+
+    var ants = [];
+
+    for (var i = 0; i < 10; i+=1){
+        ants.push(new Ant(grid.nestCell.xIndex, grid.nestCell.yIndex)); 
+    }
+    while (true){
+        await delay(200);
+
+        ants.forEach((ant) => ant.move());
+    }
 }
 
 var executed = false;
@@ -596,7 +731,7 @@ canvas.addEventListener('mousemove',function(event){
                 grid.matrix[x-1][y-1].changeType("space");
             }
             else if (dragType == "nest" && grid.matrix[x-1][y-1].type == "space"){
-                if (grid.startCell != grid.matrix[x-1][y-1])
+                if (grid.nestCell != grid.matrix[x-1][y-1])
                 {
                     grid.nestCell.changeType("space");
                     grid.matrix[x-1][y-1].changeType("nest");
