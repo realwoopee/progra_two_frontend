@@ -2,9 +2,9 @@ function clearCanvas(){
     c.clearRect(0, 0, canvas.width, canvas.height );
 }
 //TODO: смотри видео отчет за 27.03
-var width = 50;
-var height = 50;
-var squareSize = 15;
+var width = 150;
+var height = 150;
+var squareSize = 5;
 
 var canvas = document.getElementById('aCOCanvas');
 var c = canvas.getContext('2d');
@@ -54,13 +54,13 @@ function submitTriggered(){
         width = parseInt(widthEl.value);
     }
     else{
-        width = 50;
+        width = 150;
     }
     if (heightEl.value){
         height = parseInt(heightEl.value);
     }
     else{
-        height = 50;
+        height = 150;
     }
     if (squareSizeEl.value){
         squareSize = parseInt(squareSizeEl.value);
@@ -141,7 +141,7 @@ function Ant(x, y){
                 neighbourCells.push(grid.matrix[pair[0]][pair[1]]);
             }
         });
-        objectWithPossibleCells = grid.selectValidObjects(neighbourCells);
+        objectWithPossibleCells = grid.selectValidObjects(neighbourCells, this.x, this.y);
         console.log(objectWithPossibleCells);
         var counterClockWise = getRandomInt(2);
         while (Object.keys(objectWithPossibleCells).length == 0){
@@ -154,7 +154,7 @@ function Ant(x, y){
                     neighbourCells.push(grid.matrix[pair[0]][pair[1]]);
                 }
             });
-            objectWithPossibleCells = grid.selectValidObjects(neighbourCells);
+            objectWithPossibleCells = grid.selectValidObjects(neighbourCells, this.x, this.y);
         }
         var randomDirection = getRandomInt(Object.keys(objectWithPossibleCells).length);
         var newPosition = objectWithPossibleCells[randomDirection];
@@ -218,18 +218,32 @@ function Grid(x, y){
         return true;
     }
     
-    this.selectValidObjects = function(arrayOfObjects){
+    this.diagonalWallCheck = function(fromX, fromY, toX, toY){
+        var addX = toX - fromX;
+        var addY = toY - fromY;
+        if (Math.abs(addX) != 1 || Math.abs(addY) != 1){
+            return false;
+        }
+        if (!this.inBounds(fromX, fromY) || !this.inBounds(toX, toY) || !this.inBounds(fromX + addX, fromY - addY) || !this.inBounds(fromX - addX, fromY + addY)){
+            return false;
+        }
+
+        var toCheckFirst = this.matrix[fromX][toY];
+        var toCheckSecond = this.matrix[toX][fromY];
+        if (toCheckFirst.type == "wall" && toCheckSecond.type == "wall"){
+            return true;
+        }
+        return false;
+    }
+
+    this.selectValidObjects = function(arrayOfObjects, currX, currY){
         var copy = arrayOfObjects;
         var iterator = 0;
         var copyLength = copy.length;
         for (var i = 0; i < copyLength; i+=1){
-            try{
-                if (!this.inBounds(copy[iterator].xIndex, copy[iterator].yIndex) || !this.matrix[copy[iterator].xIndex][copy[iterator].yIndex].walkable){
-                    copy.splice(iterator, 1);
-                    iterator -= 1;
-                }
-            } catch (error) {
-                console.error(error);
+            if (!this.inBounds(copy[iterator].xIndex, copy[iterator].yIndex) || !this.matrix[copy[iterator].xIndex][copy[iterator].yIndex].walkable || this.diagonalWallCheck(currX, currY, copy[iterator].xIndex, copy[iterator].yIndex)){
+                copy.splice(iterator, 1);
+                iterator -= 1;
             }
             iterator+=1;
         }
@@ -602,8 +616,8 @@ async function generateMaze(){
 var drag = false;
 var dragType;
 
-canvas.width = 50 * squareSize;
-canvas.height = 50 * squareSize;
+canvas.width = 150 * squareSize;
+canvas.height = 150 * squareSize;
 
 fillGridWithRects();
 var exploredCells = [];
@@ -658,11 +672,11 @@ async function exec(){
 
     var ants = [];
 
-    for (var i = 0; i < 10; i+=1){
+    for (var i = 0; i < 90; i+=1){
         ants.push(new Ant(grid.nestCell.xIndex, grid.nestCell.yIndex)); 
     }
     while (true){
-        await delay(200);
+        await delay(40);
 
         ants.forEach((ant) => ant.move());
     }
