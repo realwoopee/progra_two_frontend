@@ -87,8 +87,9 @@ function submitTriggered(){
 function Ant(x, y){
     this.x = x;
     this.y = y;
-    this.hasFood = false;
+    this.carryingFood = false;
 
+    this.backTrack = [];
     this.pheromoneType = "private";
     this.pathToNest = [];
     this.state = "roaming";//roaming carrying
@@ -98,18 +99,28 @@ function Ant(x, y){
     pheromoneTypes.set("private", '#3395FF');
     pheromoneTypes.set("attractive", '#FF3390');
 
-    this.move = function(){
-        if (this.state == "roaming"){
-            var newPosition = this.getNeighboursInDirection();
-            if (grid.matrix[this.x][this.y].type != "nest"){
-                grid.matrix[this.x][this.y].changeType("space");
-            }
-            [this.x, this.y] = [newPosition[0], newPosition[1]];
-            if (grid.matrix[this.x][this.y].type == "space"){
-                grid.matrix[this.x][this.y].changeType("ant");
-            }
-            this.direction = newPosition[2];
+    this.goNest = function(){
+        if (this.backTrack.length > 0){
+            grid.matrix[this.x][this.y].changeType("space");
+            this.backTrack[this.backTrack.length - 1].changeType("ant");
+            this.backTrack.splice(this.backTrack.length - 1, 1);
+        }else{
+            this.hasFood = false;
         }
+    }
+
+    this.move = function(){
+        var newPosition = this.getNeighboursInDirection();
+        if (grid.matrix[this.x][this.y].type != "nest"){
+            grid.matrix[this.x][this.y].changeType("space");
+        }
+        this.backTrack.push(grid.matrix[this.x][this.y]);
+        [this.x, this.y] = [newPosition[0], newPosition[1]];
+        if (grid.matrix[this.x][this.y].type == "space"){
+            grid.matrix[this.x][this.y].changeType("ant");
+        }
+        this.direction = newPosition[2];
+        
     }
      
     this.turn = function(counterClockWise = false){
@@ -268,6 +279,7 @@ function Cell(x, y, squareSize, type){
     this.fCost = this.gCost + this.hCost;
     this.parent;
     this.connections = [];
+    this.pheromoneQuantity;
 
     const types = new Map();
     types.set("space", '#ffffff');
@@ -678,7 +690,22 @@ async function exec(){
     while (true){
         await delay(40);
 
-        ants.forEach((ant) => ant.move());
+        
+        ants.forEach((ant) => {
+
+            if (ant.carryingFood){
+                ant.goNest();
+            }else{
+                var neighbours = grid.getNeighbours(grid.matrix[ant.x][ant.y]);
+                neighbours.forEach((cell) => {
+                    if (cell.type == "food"){
+                        ant.carryingFood = true;
+                    }
+                })
+                ant.move();
+            }
+
+        });
     }
 }
 
@@ -736,6 +763,7 @@ canvas.addEventListener('mousemove',function(event){
             if (dragType == "space" && grid.matrix[x-1][y-1].type == "space"){
                 if (ctrlHeld){
                     grid.matrix[x-1][y-1].changeType("food");
+                    grid.matrix[x-1][y-1].walkable = true;
                 }
                 else{
                     grid.matrix[x-1][y-1].changeType("wall");
