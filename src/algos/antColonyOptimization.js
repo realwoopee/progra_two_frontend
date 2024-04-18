@@ -1,3 +1,5 @@
+const worker1 = new Worker('worker1.js');
+
 function clearCanvas(){
     c.clearRect(0, 0, canvas.width, canvas.height );
 }
@@ -8,6 +10,8 @@ var squareSize = 5;
 
 var canvas = document.getElementById('aCOCanvas');
 var c = canvas.getContext('2d');
+
+var foodCollectedParagraph = document.getElementById("foodCollected");
 
 //TODO rectanle for buttons to be on OR removing 
 // var buttonCanvas = document.getElementById('underButtonCanvas');
@@ -84,37 +88,71 @@ function submitTriggered(){
 
 }
 
+var pheromoneDesire = 7;
+var laziness = 0;
+var pheromoneAndDistanceDependencyConstant = 720000;
+var foodCollected = 0;
+
 function Ant(x, y){
     this.x = x;
     this.y = y;
     this.carryingFood = false;
+    this.secrating = true;
+    this.cellToRemember;
 
     this.backTrack = [];
-    this.pheromoneType = "private";
+    this.distanceOfBackTrack = 0;
     this.pathToNest = [];
-    this.state = "roaming";//roaming carrying
     var circleOfDirections = ["up", "upRight", "right", "downRight", "down", "downLeft", "left", "upLeft"];
     this.direction = circleOfDirections[getRandomInt(8)];
-    const pheromoneTypes = new Map();
-    pheromoneTypes.set("private", '#3395FF');
-    pheromoneTypes.set("attractive", '#FF3390');
 
     this.goNest = function(){
         if (this.backTrack.length > 0){
-            grid.matrix[this.x][this.y].changeType("space");
-            this.backTrack[this.backTrack.length - 1].changeType("ant");
+            if (grid.matrix[this.x][this.y].type != "nest");{
+                grid.matrix[this.x][this.y].changeType("space");
+            }
+            [this.x, this.y] = [this.backTrack[this.backTrack.length - 1].xIndex, this.backTrack[this.backTrack.length - 1].yIndex];
+            if (this.backTrack[this.backTrack.length - 1] != grid.nestCell){
+                this.backTrack[this.backTrack.length - 1].changeType("ant");
+            }
+            var cellToSplice = this.backTrack[this.backTrack.length - 1];
+            if (cellToSplice == this.cellToRemember){
+                this.secrating = true;
+            }
             this.backTrack.splice(this.backTrack.length - 1, 1);
+            if (this.backTrack.includes(cellToSplice) && this.secrating){
+                this.cellToRemember = cellToSplice;
+                this.secrating = false;
+            }
+            
+            if (this.secrating){
+                this.secretion();
+            }
         }else{
-            this.hasFood = false;
+            
+            foodCollected += 1;
+            var string = foodCollected.toString();
+            foodCollectedParagraph.innerHTML = string;
+            this.carryingFood = false;
         }
     }
 
     this.move = function(){
-        var newPosition = this.getNeighboursInDirection();
+        var newPosition;
+        if (this.backTrack.length == 0){
+            newPosition = this.getNeighboursInDirection();
+        }else{
+            newPosition = this.getNeighboursInDirection();
+        }
         if (grid.matrix[this.x][this.y].type != "nest"){
             grid.matrix[this.x][this.y].changeType("space");
         }
         this.backTrack.push(grid.matrix[this.x][this.y]);
+        if (this.backTrack.length > 1){
+            this.distanceOfBackTrack += getDistance(this.backTrack[this.backTrack.length - 2], this.backTrack[this.backTrack.length - 1]);
+        }else{
+            this.distanceOfBackTrack = 0;
+        }
         [this.x, this.y] = [newPosition[0], newPosition[1]];
         if (grid.matrix[this.x][this.y].type == "space"){
             grid.matrix[this.x][this.y].changeType("ant");
@@ -131,6 +169,21 @@ function Ant(x, y){
         else{
             this.direction = circleOfDirections[(circleOfDirections.indexOf(this.direction) + 5) % 8];
         }
+    }
+
+    this.selectRandomDirectionBasedOnProbabilities = function(arrayOfProbabilities){
+        var startBorder = 0;
+        var random = Math.random();
+        for (var i = 0; i < arrayOfProbabilities.length; i+=1){
+            number = arrayOfProbabilities[i];
+            number += startBorder;
+            if (random <= number){
+                return i;
+            }
+            startBorder = number;
+        }
+        
+
     }
 
     this.getNeighboursInDirection = function(){
@@ -153,24 +206,120 @@ function Ant(x, y){
             }
         });
         objectWithPossibleCells = grid.selectValidObjects(neighbourCells, this.x, this.y);
-        console.log(objectWithPossibleCells);
         var counterClockWise = getRandomInt(2);
+        var arrayOfProbabilities = [];
         while (Object.keys(objectWithPossibleCells).length == 0){
             this.turn(counterClockWise);
             
             objectWithPossibleCells = indexesAndDirectionCorelation.get(this.direction);
             neighbourCells = [];
+            var sumOfLazinessAndPheromoneDesire = 0;
             objectWithPossibleCells.forEach((pair) => {
                 if (grid.inBounds(pair[0], pair[1])){
                     neighbourCells.push(grid.matrix[pair[0]][pair[1]]);
+                    
                 }
             });
             objectWithPossibleCells = grid.selectValidObjects(neighbourCells, this.x, this.y);
+            
         }
-        var randomDirection = getRandomInt(Object.keys(objectWithPossibleCells).length);
+        //DEBUG
+        objectWithPossibleCells.forEach((cell) =>{
+            if (cell.pheromoneQuantity > 1){
+                var testVar1 = 1;
+            }
+        })
+        //
+        var sumOfLazinessAndPheromoneDesire = 0;
+        objectWithPossibleCells.forEach((cell) =>{
+            cell.distanceFromCurrent = getDistance(grid.matrix[this.x][this.y], cell);
+            cell.distanceAndPheromoneSum = Math.pow(cell.distanceFromCurrent, laziness) * Math.pow(cell.pheromoneQuantity, pheromoneDesire);
+            sumOfLazinessAndPheromoneDesire += cell.distanceAndPheromoneSum;
+        })
+        
+        objectWithPossibleCells.forEach((cell) =>{
+            cell.probabilityToVisit = cell.distanceAndPheromoneSum / sumOfLazinessAndPheromoneDesire;
+            arrayOfProbabilities.push(cell.probabilityToVisit);
+        })
+        var randomDirection = this.selectRandomDirectionBasedOnProbabilities(arrayOfProbabilities);
         var newPosition = objectWithPossibleCells[randomDirection];
         var result = [newPosition.xIndex, newPosition.yIndex, circleOfDirections[indexesAndDirectionCorelation.get(this.direction)[randomDirection][2]]];
         return result;
+    }
+
+    this.getNeighbours = function(){
+        for (var i = -1; i < 2; i+=1){
+            for (var j = -1; j < 2; j+=1){
+                var neighbourX = this.x + i;
+                var neighbourY = this.y + j;
+                if (neighbourX > -1 && neighbourX < this.x && neighbourY > -1 && neighbourY < this.y){
+                    if (i == 0 && j == 0 || !this.matrix[cell.xIndex + i][cell.yIndex + j].walkable || (!this.matrix[cell.xIndex + i][cell.yIndex].walkable && !this.matrix[cell.xIndex][cell.yIndex + j].walkable)){
+                        continue;
+                    }
+                    else{
+                        neighbours.push([neighbourX, neighbourY]);
+                    }
+                }
+                
+            }
+        }
+        var neighbourCells = [];
+        objectWithPossibleCells.forEach((pair) => {
+            //if (grid.inBounds(pair[0],pair[1])){
+                neighbourCells.push(grid.matrix[pair[0]][pair[1]]);
+            //}
+        });
+        objectWithPossibleCells = grid.selectValidObjects(neighbourCells, this.x, this.y);
+        var counterClockWise = getRandomInt(2);
+        var arrayOfProbabilities = [];
+        while (Object.keys(objectWithPossibleCells).length == 0){
+            this.turn(counterClockWise);
+            
+            objectWithPossibleCells = indexesAndDirectionCorelation.get(this.direction);
+            neighbourCells = [];
+            var sumOfLazinessAndPheromoneDesire = 0;
+            objectWithPossibleCells.forEach((pair) => {
+                if (grid.inBounds(pair[0], pair[1])){
+                    neighbourCells.push(grid.matrix[pair[0]][pair[1]]);
+                    
+                }
+            });
+            objectWithPossibleCells = grid.selectValidObjects(neighbourCells, this.x, this.y);
+            
+        }
+        //DEBUG
+        objectWithPossibleCells.forEach((cell) =>{
+            if (cell.pheromoneQuantity > 1){
+                var testVar1 = 1;
+            }
+        })
+        //
+        var sumOfLazinessAndPheromoneDesire = 0;
+        objectWithPossibleCells.forEach((cell) =>{
+            cell.distanceFromCurrent = getDistance(grid.matrix[this.x][this.y], cell);
+            cell.distanceAndPheromoneSum = Math.pow(cell.distanceFromCurrent, laziness) * Math.pow(cell.pheromoneQuantity, pheromoneDesire);
+            sumOfLazinessAndPheromoneDesire += cell.distanceAndPheromoneSum;
+        })
+        
+        objectWithPossibleCells.forEach((cell) =>{
+            cell.probabilityToVisit = cell.distanceAndPheromoneSum / sumOfLazinessAndPheromoneDesire;
+            arrayOfProbabilities.push(cell.probabilityToVisit);
+        })
+        var randomDirection = this.selectRandomDirectionBasedOnProbabilities(arrayOfProbabilities);
+        var newPosition = objectWithPossibleCells[randomDirection];
+        console.log(arrayOfProbabilities);
+        console.log(randomDirection);
+        console.log(newPosition);
+        var result = [newPosition.xIndex, newPosition.yIndex, circleOfDirections[indexesAndDirectionCorelation.get(this.direction)[randomDirection][2]]];
+        return result;
+    }
+
+    this.secretion = function(){
+        
+        var pheromonesToLeave = Math.max(pheromoneAndDistanceDependencyConstant / (this.distanceOfBackTrack * 1.3), 200);
+        //var pheromonesToLeave = pheromoneAndDistanceDependencyConstant / (this.distanceOfBackTrack * 2);
+        grid.matrix[this.x][this.y].pheromoneQuantity = Math.min(grid.matrix[this.x][this.y].pheromoneQuantity + pheromonesToLeave, 950);
+        //console.log(grid.matrix[this.x][this.y].pheromoneQuantity);
     }
 }
 
@@ -260,6 +409,17 @@ function Grid(x, y){
         }
         return copy;
     }
+
+    this.evaporate = function(){
+        for (var i = 0; i < this.matrix.length; i+=1){
+            this.matrix[i].forEach((cell) => {
+                if (cell.pheromoneQuantity > 4){
+                    cell.pheromoneQuantity -= 3;
+                }
+                cell.draw();
+            });
+        }
+    }
 } 
 
 function MyObject(x, y){
@@ -274,12 +434,12 @@ function Cell(x, y, squareSize, type){
     this.yIndex;
     this.type = type;
     this.size = squareSize;
-    this.gCost;
-    this.hCost;
-    this.fCost = this.gCost + this.hCost;
     this.parent;
     this.connections = [];
     this.pheromoneQuantity;
+    this.distanceFromCurrent;
+    this.distanceAndPheromoneSum;
+    this.probabilityToVisit;
 
     const types = new Map();
     types.set("space", '#ffffff');
@@ -298,7 +458,12 @@ function Cell(x, y, squareSize, type){
         c.clearRect(x, y, squareSize, squareSize);
         c.beginPath();
         c.rect(x, y, squareSize, squareSize);
-        c.fillStyle = types.get(this.type);
+        if (this.pheromoneQuantity > 0 && this.type == "space"){
+            var alpha = this.pheromoneQuantity / 1500;
+            c.fillStyle = "rgba(255, 0, 102, "+ alpha.toString() +" )";
+        }else{
+            c.fillStyle = types.get(this.type);
+        }
         c.fill();
     }
 
@@ -406,6 +571,7 @@ function fillGridWithRects(){
         for(var j = 0; j <= canvas.height - squareSize; j += squareSize){
             var cell = new Cell(i, j, squareSize, "space");
             cell.walkable = true;
+            cell.pheromoneQuantity = 2;
             grid.matrix[row][column] = cell;
             cell.xIndex = row;
             cell.yIndex = column;
@@ -420,7 +586,13 @@ function fillGridWithRects(){
 
     grid.x = grid.matrix.length;
     grid.y = grid.matrix[0].length;
-    console.log(grid);
+
+    // for (var i = 50; i < 100; i+=1){
+    //     grid.matrix[i][60].changeType("food");
+    //     grid.matrix[i][90].changeType("food");
+    //     grid.matrix[i][60].walkable = true;
+    //     grid.matrix[i][90].walkable = true;
+    // }
 }
 
 var g = function(cell){
@@ -439,6 +611,7 @@ var h = function(cell){
         return 14 * xDist + 10 * (yDist - xDist);
     }
 
+    
 
 }
 
@@ -516,115 +689,6 @@ function placeNest(){
     }
 }
 
-
-async function generateMaze(){
-    if (executed == true){
-        return;
-    }
-
-    executed = true;
-
-    clearCanvas();
-    fillGridWithRects();
-    for (var i = 0; i < grid.matrix.length; i+=1){
-        for (var j = 0; j < grid.matrix[0].length; j+=1){
-            grid.matrix[i][j].changeType("wall");
-        }
-    }
-
-    for (var i = 0; i < grid.matrix.length; i+=1){
-        grid.matrix[i][0].changeType("space");
-        grid.matrix[i][grid.matrix[0].length - 1].changeType("space");
-    }
-
-    for (var i = 0; i < grid.matrix[0].length; i+=1){
-        grid.matrix[0][i].changeType("space");
-        grid.matrix[grid.matrix.length - 1][i].changeType("space");
-    }
-
-    var randX;
-    var randY;
-    if (grid.matrix.length % 2 != 0){
-        randX = getRandomIntFromRange(1, (grid.matrix.length - 2) / 2) * 2 + 1;
-    }
-    else{
-        randX = getRandomIntFromRange(1, (grid.matrix.length) / 2) * 2;
-    }
-
-    if (grid.matrix[0].length % 2 != 0){
-        randY = getRandomIntFromRange(1, (grid.matrix[0].length - 2) / 2) * 2 + 1;
-    }
-    else{
-        randY = getRandomIntFromRange(1, (grid.matrix[0].length) / 2) * 2;
-    }
-
-    var curCell = grid.matrix[randX][randY];
-    curCell.changeType("space");
-    var toCheck = [];
-    updateToCheck(toCheck, curCell);
-
-    var smartDelay = 2000 / (grid.matrix.length * grid.matrix[0].length); 
-
-    while (toCheck.length > 0){
-        var randIndex = getRandomInt(toCheck.length);
-        while (toCheck.length > 0 && toCheck[randIndex].type == "space"){
-            toCheck.splice(randIndex, 1);
-            randIndex = getRandomInt(toCheck.length);
-        }
-        if (randIndex % 3 == 0){
-            randIndex = getRandomInt(toCheck.length / 2);
-        }
-        else{
-            randIndex = getRandomIntFromRange(toCheck.length / 2, toCheck.length);
-        }
-        if (randIndex < toCheck.length){
-            var randCell = toCheck[randIndex];
-            randCell.changeType("space");
-            toCheck.splice(randIndex, 1);
-            connectSpaces(randCell);
-            updateToCheck(toCheck, randCell);
-            await delay(smartDelay);
-        }
-    }
-    
-    
-
-    for (var i = 0; i < grid.matrix.length; i+=1){
-        grid.matrix[i][0].changeType("wall");
-        grid.matrix[i][grid.matrix[0].length - 1].changeType("wall");
-        await delay(smartDelay);
-    }
-
-    for (var i = 0; i < grid.matrix[0].length; i+=1){
-        grid.matrix[0][i].changeType("wall");
-        grid.matrix[grid.matrix.length - 1][i].changeType("wall");
-        await delay(smartDelay);
-    }
-
-    if (grid.matrix[0].length % 2 == 0){
-        for (var i = 1; i < grid.matrix.length - 1; i+=1){
-            if (grid.matrix[i][2].type != "wall"){
-                grid.matrix[i][1].changeType("space");
-            }
-            await delay(smartDelay);
-        }
-    }
-
-    if (grid.matrix.length % 2 == 0){
-        for (var i = 1; i < grid.matrix[0].length - 1; i+=1){
-            if (grid.matrix[2][i].type != "wall"){
-                grid.matrix[1][i].changeType("space");
-            }
-            await delay(5);
-        }
-    }
-
-    placeNest();
-    
-    executed = false;
-
-}
-
 var drag = false;
 var dragType;
 
@@ -650,31 +714,6 @@ const delay = (delayInms) => {
     return new Promise(resolve => setTimeout(resolve, delayInms));
   };
 
-async function pathFinder(){
-    path = [];
-    currentCell = grid.finishCell;
-
-    if (typeof currentCell.parent === 'undefined'){
-        document.getElementById("NoPathFound").innerHTML = "No path existing";
-        return;
-    }
-
-    while (currentCell != grid.startCell){
-        path.push(currentCell);
-        currentCell = currentCell.parent;
-    }
-
-    path.reverse();
-    for (var i = 0; i < path.length - 1; i += 1){
-        await delay(35);
-        if (path[i].type != "startCell" && path[i].type != "finishCell"){
-            path[i].changeType("routeIncluded");
-        }
-    }
-    executed = false;
-}
-
-
 
 async function exec(){
     if (executed == true){
@@ -684,28 +723,36 @@ async function exec(){
 
     var ants = [];
 
-    for (var i = 0; i < 90; i+=1){
+    for (var i = 0; i < 300; i+=1){
         ants.push(new Ant(grid.nestCell.xIndex, grid.nestCell.yIndex)); 
     }
     while (true){
-        await delay(40);
+        await delay(1);
 
         
         ants.forEach((ant) => {
 
             if (ant.carryingFood){
-                ant.goNest();
+                worker1.postMessage(ant.goNest());
+                //ant.goNest();
+                //ant.secretion();
             }else{
                 var neighbours = grid.getNeighbours(grid.matrix[ant.x][ant.y]);
                 neighbours.forEach((cell) => {
                     if (cell.type == "food"){
                         ant.carryingFood = true;
+                        ant.secretion();
                     }
                 })
-                ant.move();
+                if (!ant.carryingFood){
+                    worker1.postMessage(ant.move());
+                    //ant.move();
+                }
             }
 
         });
+
+        grid.evaporate();
     }
 }
 
@@ -715,9 +762,6 @@ var execution = document.getElementById("Start Routing");
 
 execution.addEventListener('click', exec);
 
-var maze = document.getElementById("generateMaze");
-
-maze.addEventListener('click', generateMaze);
 
 var resSubBtn = document.getElementById('resolutionSubmitButton');
 
