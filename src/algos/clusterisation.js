@@ -39,9 +39,9 @@ function click(mouseClick) {
     let row = Math.floor(y / cellSize);
     let col = Math.floor(x / cellSize);
 
-    coordinates.push([row, col]);
+    сoordinates.push([row, col]);
     drawCell(row, col, 'red');
-    matrix = createMatrix(canvasSize, coordinates);
+    matrix = createMatrix(canvasSize, сoordinates);
 
 }
 function createMatrix(size, coordinates) {
@@ -171,3 +171,11 @@ function inaccuracy(prevCentroids, centroids) {
     }
     return true;
 }
+
+var execBtn = document.getElementById("execution");
+
+execBtn.addEventListener('click', () => clusters());
+
+var createCanvasBtn = document.getElementById("createCanvas");
+
+createCanvasBtn.addEventListener('click', () => createCanvas());
