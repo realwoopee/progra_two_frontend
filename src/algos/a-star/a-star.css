@@ -1,0 +1,57 @@
+.mainCanvas {
+    position: relative;
+    bottom: 0%;
+    left: -250px
+}
+
+.widthAndHeight {
+    position: fixed;
+    top: 15%;
+    right: 5%;
+}
+
+.underButtonsCanvas {
+    position: absolute;
+    outline: black 1px solid;
+    background: rgba(232, 217, 87, 0.85);
+    width: 340px;
+    height: 140px;
+    bottom: 5px;
+    left: -10px;
+}
+
+
+.submits {
+    position: relative;
+}
+
+.widthDiv {
+    .widthInput {
+        position: relative;
+        width: 50px;
+    }
+
+    left: 100px;
+    position: relative;
+
+}
+
+.heightDiv {
+    .heightInput {
+        position: relative;
+        width: 50px;
+    }
+
+    left: 96px;
+    position: relative;
+}
+
+.squareSizeDiv {
+    .aStarSquareSize {
+        position: relative;
+        width: 50px;
+    }
+
+    left: 80px;
+    position: relative;
+}
