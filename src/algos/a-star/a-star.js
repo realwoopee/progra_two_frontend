@@ -1,614 +1,513 @@
-function clearCanvas() {
-    c.clearRect(0, 0, canvas.width, canvas.height);
-}
+import { delay, getRandomInt, getRandomIntFromRange } from "../../utils";
 
-var width = 60;
-var height = 28;
-var squareSize = 30;
+class AStar {
+  constructor(canvas, logFunc) {
+    this.canvas = canvas;
+    this.canvasContext = canvas.getContext("2d");
+    this.logFunc = logFunc;
+    this.grid = new Grid(0, 0);
+  }
 
+  clearCanvas() {
+    this.canvasContext.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
 
-var canvas = document.getElementById('a-starCanvas');
-var c = canvas.getContext('2d');
-canvas.width = 60 * squareSize;
-canvas.height = 29 * squareSize;
-
-const underButtonCanvas = document.getElementById('underButtonsCanvas');
-const ctxUBC = underButtonCanvas.getContext('2d');
-
-const maze = document.getElementById("generateMaze");
-const execution = document.getElementById("Start Routing");
-const resSubBtn = document.getElementById('resolutionSubmitButton');
-const widthEl = document.getElementById('aStarWidth');
-const heightEl = document.getElementById('aStarHeight');
-const squareSizeEl = document.getElementById('aStarSquareSize');
-
-const delay = (delayInms) => {
-    return new Promise(resolve => setTimeout(resolve, delayInms));
-};
-
-var executed = false;
-var beingExecuted = false;
-var drag = false;
-var dragType;
-
-var exploredCells = [];
-
-function Grid(x, y) {
-    var x = x;
-    var y = y;
-    var matrix = [];
-
-    var startCell;
-    var finishCell;
-
-
-    this.getNeighbours = function (cell) {
-        var neighbours = [];
-
-        for (var i = -1; i < 2; i += 1) {
-            for (var j = -1; j < 2; j += 1) {
-                var neighbourX = cell.xIndex + i;
-                var neighbourY = cell.yIndex + j;
-                if (neighbourX > -1 && neighbourX < this.x && neighbourY > -1 && neighbourY < this.y) {
-                    if (i === 0 && j === 0 || !this.matrix[cell.xIndex + i][cell.yIndex + j].walkable ||
-                        (!this.matrix[cell.xIndex + i][cell.yIndex].walkable && !this.matrix[cell.xIndex][cell.yIndex + j].walkable)) {
-
-                        continue;
-                    }
-                    else {
-                        var neighbour = this.matrix[neighbourX][neighbourY];
-
-                        //neighbour.gCost = g(neighbour);
-                        neighbour.hCost = h(neighbour);
-                        neighbour.fCost = neighbour.gCost + neighbour.hCost;
-
-                        neighbours.push(this.matrix[neighbourX][neighbourY]);
-                    }
-                }
-
-            }
-        }
-        return neighbours;
+  fillGridWithRects() {
+    this.clearCanvas();
+    this.grid.matrix = [];
+    let row = 0;
+    let column = 0;
+    for (let i = 0; i < width; i += 1) {
+      column = 0;
+      this.grid.matrix[row] = [];
+      for (let j = 0; j < height; j += 1) {
+        const cell = new Cell(i * squareSize, j * squareSize, squareSize, "space", this.canvasContext);
+        this.grid.matrix[row][column] = cell;
+        cell.xIndex = row;
+        cell.yIndex = column;
+        cell.draw();
+        column += 1;
+      }
+      row += 1;
     }
 
+    this.grid.x = width;
+    this.grid.y = height;
 
-}
+    this.grid.matrix[Math.round(this.grid.x / 3)][Math.round(this.grid.y / 2)].changeType("start");
+    this.grid.matrix[Math.round(this.grid.x / 3 * 2)][Math.round(this.grid.y / 2)].changeType("finish");
+    this.grid.startCell = this.grid.matrix[Math.round(this.grid.x / 3)][Math.round(this.grid.y / 2)];
+    this.grid.finishCell = this.grid.matrix[Math.round(this.grid.x / 3 * 2)][Math.round(this.grid.y / 2)];
 
-function Cell(x, y, squareSize, type) {
-    this.x = x;
-    this.y = y;
-    this.xIndex;
-    this.yIndex;
-    this.type = type;
-    this.size = squareSize;
-    this.gCost;
-    this.hCost;
-    this.fCost = this.gCost + this.hCost;
-    this.parent;
-    this.connections = [];
+  }
 
-    const types = new Map();
-    types.set("space", '#F8F9F9');
-    types.set("wall", '#A8A8A8');
-    types.set("start", '#001EC4');
-    types.set("finish", '#C40000');
-    types.set("routeOpened", '#E8D957');
-    types.set("routeClosed", '#C5E857');
-    types.set("routeIncluded", '#FF8213');
-
-    var walkable = false;
-
-    this.draw = function () {
-        c.clearRect(x, y, squareSize, squareSize);
-        c.beginPath();
-        c.rect(x + 0.5, y + 0.5, squareSize - 1, squareSize - 1);
-        c.fillStyle = types.get(this.type);
-        c.fill();
-        c.lineWidth = 0.3;
-        c.strokeStyle = "#17202A";
-        c.stroke();
+  submitTriggered() {
+    if (this.executing) {
+      return;
     }
 
-    this.changeType = function (type) {
-        this.type = type;
-        if (this.type === "space" || this.type === "routeOpened" || this.type === "finish" || this.type === "routeIncluded" || this.type === "start") {
-            this.walkable = true;
-        }
-        else {
-            this.walkable = false;
-        }
-        this.draw();
-    }
+    this.executing = true;
 
-    this.displayFCost = function () {
-        c.font = "black 8px Georgia";
-        c.fillStyle = "black";
-        c.clearRect(this.x + 5, this.y + 5, squareSize - 5, squareSize - 5);
-        c.fillText(this.fCost, this.x, this.y + 15);
-    }
-
-
-
-}
-
-function myArray() {
-
-    this.array = [];
-
-    this.push = function (value) {
-        if (value.type !== "start" && value.type !== "finish") {
-            value.changeType('routeOpened');
-        }
-        this.array.push(value);
-        this.array.sort((a, b) => a.fCost - b.fCost);
-    }
-
-    this.pop = function () {
-        if (this.array.length > 0) {
-            var value = this.array[0];
-            if (value.type !== 'start' && value.type !== 'finish') {
-                value.changeType('routeClosed'); //???
-            }
-            this.array.splice(0, 1);
-            return value;
-        }
-        else {
-            return null;
-        }
-    }
-
-    this.top = function () {
-        return this.array[0];
-    }
-
-    this.size = function () {
-        return this.array.length;
-    }
-
-    this.getArray = function () {
-        return this.array;
-    }
-
-}
-
-function getRandomInt(max) {
-    return Math.floor(Math.random() * max);
-
-}
-
-function getRandomIntFromRange(min, max) {
-    const minCeiled = Math.ceil(min);
-    const maxFloored = Math.floor(max);
-    return Math.floor(Math.random() * (maxFloored - minCeiled) + minCeiled); // The maximum is exclusive and the minimum is inclusive
-}
-
-function submitTriggered() {
-    if (beingExecuted) {
-        return;
-    }
-    
-    var errorMessage = document.getElementById('WrongInputError');
     if (width < 0 || height < 0 || squareSize < 0) {
-        errorMessage.innerHTML = "Input is incorrect.";
-        return;
+      this.logFunc?.("Input is incorrect.");
+      return;
     }
 
-    executed = false;
-    beingExecuted = false;
-    
+    this.canvas.width = width * squareSize;
+    this.canvas.height = height * squareSize;
+    this.clearCanvas();
+    this.grid.matrix = [];
+    this.fillGridWithRects();
 
-    clearCanvas();
-    grid.matrix = [];
+    this.executing = false;
+  }
 
-    errorMessage.innerHTML = "";
-    canvas.width = width * squareSize;
-    canvas.height = height * squareSize;
-    fillGridWithRects();
-
-}
-
-grid = new Grid(0, 0);
-
-function fillGridWithRects() {
-    clearCanvas();
-    grid.matrix = [];
-    var row = 0;
-    var column = 0;
-    for (var i = 0; i <= canvas.width - squareSize; i += squareSize) {
-        column = 0;
-        grid.matrix[row] = [];
-        for (var j = 0; j <= canvas.height - squareSize; j += squareSize) {
-            var cell = new Cell(i, j, squareSize, "space");
-            cell.walkable = true;
-            grid.matrix[row][column] = cell;
-            cell.xIndex = row;
-            cell.yIndex = column;
-            cell.draw();
-            column += 1;
-        }
-        row += 1;
-    }
-
-    grid.matrix[Math.round(grid.matrix.length / 3)][Math.round(grid.matrix[0].length / 2)].changeType("start");
-    grid.matrix[Math.round(grid.matrix.length / 3 * 2)][Math.round(grid.matrix[0].length / 2)].changeType("finish");
-    grid.startCell = grid.matrix[Math.round(grid.matrix.length / 3)][Math.round(grid.matrix[0].length / 2)];
-    grid.finishCell = grid.matrix[Math.round(grid.matrix.length / 3 * 2)][Math.round(grid.matrix[0].length / 2)];
-
-    grid.x = grid.matrix.length;
-    grid.y = grid.matrix[0].length;
-}
-
-var g = function (cell) {
-    cell.gCost = cell.parent.gCost + getDistance(cell, cell.parent);
-    return cell.gCost;
-}
-
-var h = function (cell) {
-    xDist = Math.abs(cell.xIndex - grid.finishCell.xIndex);
-    yDist = Math.abs(cell.yIndex - grid.finishCell.yIndex);
-
-    if (xDist > yDist) {
-        return 14 * yDist + 10 * (xDist - yDist);
-    }
-    else {
-        return 14 * xDist + 10 * (yDist - xDist);
-    }
-
-
-}
-
-function updateToCheck(toCheck, cell) {
-    if (cell.xIndex + 2 < grid.matrix.length) {
-        if (grid.matrix[cell.xIndex + 2][cell.yIndex].type === "wall") {
-            toCheck.push(grid.matrix[cell.xIndex + 2][cell.yIndex]);
-        }
+  updateToCheck(toCheck, cell) {
+    if (cell.xIndex + 2 < this.grid.matrix.length) {
+      if (!this.grid.matrix[cell.xIndex + 2][cell.yIndex].type.walkable) {
+        toCheck.push(this.grid.matrix[cell.xIndex + 2][cell.yIndex]);
+      }
     }
 
     if (cell.xIndex - 2 > 0) {
-        if (grid.matrix[cell.xIndex - 2][cell.yIndex].type === "wall") {
-            toCheck.push(grid.matrix[cell.xIndex - 2][cell.yIndex]);
-        }
+      if (!this.grid.matrix[cell.xIndex - 2][cell.yIndex].type.walkable) {
+        toCheck.push(this.grid.matrix[cell.xIndex - 2][cell.yIndex]);
+      }
     }
 
-    if (cell.yIndex + 2 < grid.matrix[0].length) {
-        if (grid.matrix[cell.xIndex][cell.yIndex + 2].type === "wall") {
-            toCheck.push(grid.matrix[cell.xIndex][cell.yIndex + 2]);
-        }
+    if (cell.yIndex + 2 < this.grid.matrix[0].length) {
+      if (!this.grid.matrix[cell.xIndex][cell.yIndex + 2].type.walkable) {
+        toCheck.push(this.grid.matrix[cell.xIndex][cell.yIndex + 2]);
+      }
     }
 
     if (cell.yIndex - 2 > 0) {
-        if (grid.matrix[cell.xIndex][cell.yIndex - 2].type === "wall") {
-            toCheck.push(grid.matrix[cell.xIndex][cell.yIndex - 2]);
-        }
+      if (!this.grid.matrix[cell.xIndex][cell.yIndex - 2].type.walkable) {
+        toCheck.push(this.grid.matrix[cell.xIndex][cell.yIndex - 2]);
+      }
     }
-}
+  }
 
-function connectSpaces(cell) {
+  connectSpaces(cell) {
 
     while (true) {
 
-        var randomDirection = getRandomInt(4);
+      const randomDirection = getRandomInt(4);
 
-        if (cell.xIndex + 2 < grid.matrix.length && randomDirection === 0) {
-            if (grid.matrix[cell.xIndex + 2][cell.yIndex].type === "space") {
-                grid.matrix[cell.xIndex + 1][cell.yIndex].changeType("space");
-                return;
-            }
+      if (cell.xIndex + 2 < this.grid.x && randomDirection === 0) {
+        if (this.grid.matrix[cell.xIndex + 2][cell.yIndex].type.walkable) {
+          this.grid.matrix[cell.xIndex + 1][cell.yIndex].changeType("space");
+          return;
         }
+      }
 
-        if (cell.xIndex - 2 > 0 && randomDirection === 1) {
-            if (grid.matrix[cell.xIndex - 2][cell.yIndex].type === "space") {
-                grid.matrix[cell.xIndex - 1][cell.yIndex].changeType("space");
-                return;
-            }
+      if (cell.xIndex - 2 > 0 && randomDirection === 1) {
+        if (this.grid.matrix[cell.xIndex - 2][cell.yIndex].type.walkable) {
+          this.grid.matrix[cell.xIndex - 1][cell.yIndex].changeType("space");
+          return;
         }
+      }
 
-        if (cell.yIndex + 2 < grid.matrix[0].length && randomDirection === 2) {
-            if (grid.matrix[cell.xIndex][cell.yIndex + 2].type === "space") {
-                grid.matrix[cell.xIndex][cell.yIndex + 1].changeType("space");
-                return;
-            }
+      if (cell.yIndex + 2 < this.grid.y && randomDirection === 2) {
+        if (this.grid.matrix[cell.xIndex][cell.yIndex + 2].type.walkable) {
+          this.grid.matrix[cell.xIndex][cell.yIndex + 1].changeType("space");
+          return;
         }
+      }
 
-        if (cell.yIndex - 2 > 0 && randomDirection === 3) {
-            if (grid.matrix[cell.xIndex][cell.yIndex - 2].type === "space") {
-                grid.matrix[cell.xIndex][cell.yIndex - 1].changeType("space");
-                return;
-            }
+      if (cell.yIndex - 2 > 0 && randomDirection === 3) {
+        if (this.grid.matrix[cell.xIndex][cell.yIndex - 2].type.walkable) {
+          this.grid.matrix[cell.xIndex][cell.yIndex - 1].changeType("space");
+          return;
         }
+      }
     }
-}
+  }
 
-function placeStart() {
-    for (var i = 1; i < grid.matrix.length - 1; i += 1) {
-        for (var j = 1; j < grid.matrix[0].length - 1; j += 1) {
-            if (grid.matrix[i][j].type === "space") {
-                grid.matrix[i][j].changeType("start");
-                grid.startCell = grid.matrix[i][j];
-                return;
-            }
-        }
-    }
-}
-
-function placeFinish() {
-    for (var i = grid.matrix.length - 1; i > 1; i -= 1) {
-        for (var j = grid.matrix[0].length - 1; j > 1; j -= 1) {
-            if (grid.matrix[i][j].type === "space") {
-                grid.matrix[i][j].changeType("finish");
-                grid.finishCell = grid.matrix[i][j];
-                return;
-            }
-        }
-    }
-}
-
-async function generateMaze() {
-    if (beingExecuted === true) {
+  placeStart() {
+    for (const row of this.grid.matrix.slice(1, -1)) {
+      for (const cell of row.slice(1, -1)) {
+        if (cell.type.name !== "space") continue;
+        cell.changeType("start");
+        this.grid.startCell = cell;
         return;
+      }
     }
-    beingExecuted = true;
+  }
 
-    clearCanvas();
-    fillGridWithRects();
+  placeFinish() {
+    for (const row of this.grid.matrix.slice(1, -1).toReversed()) {
+      for (const cell of row.slice(1, -1).toReversed()) {
+        if (cell.type.name !== "space") continue;
+        cell.changeType("finish");
+        this.grid.finishCell = cell;
+        return;
+      }
+    }
+  }
 
-    for (var i = 0; i < grid.matrix.length; i += 1) {
-        for (var j = 0; j < grid.matrix[0].length; j += 1) {
-            grid.matrix[i][j].changeType("wall");
-        }
+  async generateMaze() {
+    if (this.executing) {
+      return;
     }
+    this.executing = true;
 
-    for (var i = 0; i < grid.matrix.length; i += 1) {
-        grid.matrix[i][0].changeType("space");
-        grid.matrix[i][grid.matrix[0].length - 1].changeType("space");
-    }
+    this.clearCanvas();
+    this.fillGridWithRects();
 
-    for (var i = 0; i < grid.matrix[0].length; i += 1) {
-        grid.matrix[0][i].changeType("space");
-        grid.matrix[grid.matrix.length - 1][i].changeType("space");
-    }
-
-    var randX;
-    var randY;
-    if (grid.matrix.length % 2 !== 0) {
-        randX = getRandomIntFromRange(1, (grid.matrix.length - 2) / 2) * 2 + 1;
-    }
-    else {
-        randX = getRandomIntFromRange(1, (grid.matrix.length) / 2) * 2;
-    }
-
-    if (grid.matrix[0].length % 2 !== 0) {
-        randY = getRandomIntFromRange(1, (grid.matrix[0].length - 2) / 2) * 2 + 1;
-    }
-    else {
-        randY = getRandomIntFromRange(1, (grid.matrix[0].length) / 2) * 2;
+    for (const col of this.grid.matrix) {
+      for (const cell of col) {
+        cell.changeType("wall");
+      }
     }
 
-    var curCell = grid.matrix[randX][randY];
+    for (const col of this.grid.matrix) {
+      col[0].changeType("space");
+      col[col.length - 1].changeType("space");
+    }
+
+    for (const col of this.grid.matrix.toSpliced(1, this.grid.matrix.length - 2)) {
+      for (const cell of col) {
+        cell.changeType("space");
+      }
+    }
+
+    let randX;
+    let randY;
+    if (this.grid.x % 2 !== 0) {
+      randX = getRandomIntFromRange(1, (this.grid.x - 2) / 2) * 2 + 1;
+    } else {
+      randX = getRandomIntFromRange(1, (this.grid.x) / 2) * 2;
+    }
+
+    if (this.grid.y % 2 !== 0) {
+      randY = getRandomIntFromRange(1, (this.grid.y - 2) / 2) * 2 + 1;
+    } else {
+      randY = getRandomIntFromRange(1, (this.grid.y) / 2) * 2;
+    }
+
+    const curCell = this.grid.matrix[randX][randY];
     curCell.changeType("space");
-    var toCheck = [];
-    updateToCheck(toCheck, curCell);
+    const toCheck = [];
+    this.updateToCheck(toCheck, curCell);
 
-    var smartDelay = 2000 / (grid.matrix.length * grid.matrix[0].length);
-    var delayRequired = true;
-    if (grid.matrix.length * grid.matrix[0].length > 2500){
-        delayRequired = false;
+    const smartDelay = 2000 / (this.grid.x * this.grid.y);
+    let delayRequired = true;
+    if (this.grid.x * this.grid.y > 2500) {
+      delayRequired = false;
     }
 
     while (toCheck.length > 0) {
-        var randIndex = getRandomInt(toCheck.length);
-        while (toCheck.length > 0 && toCheck[randIndex].type === "space") {
-            toCheck.splice(randIndex, 1);
-            randIndex = getRandomInt(toCheck.length);
+      let randIndex = getRandomInt(toCheck.length);
+      while (toCheck.length > 0 && toCheck[randIndex].type.walkable) {
+        toCheck.splice(randIndex, 1);
+        randIndex = getRandomInt(toCheck.length);
+      }
+      if (randIndex % 3 === 0) {
+        randIndex = getRandomInt(toCheck.length / 2);
+      } else {
+        randIndex = getRandomIntFromRange(toCheck.length / 2, toCheck.length);
+      }
+      if (randIndex < toCheck.length) {
+        const randCell = toCheck[randIndex];
+        randCell.changeType("space");
+        toCheck.splice(randIndex, 1);
+        this.connectSpaces(randCell);
+        this.updateToCheck(toCheck, randCell);
+        if (delayRequired) {
+          await delay(smartDelay);
         }
-        if (randIndex % 3 === 0) {
-            randIndex = getRandomInt(toCheck.length / 2);
+      }
+    }
+
+    for (const col of this.grid.matrix) {
+      col[0].changeType("wall");
+      col[col.length - 1].changeType("wall");
+      if (delayRequired) {
+        await delay(smartDelay);
+      }
+    }
+
+    for (const col of this.grid.matrix.toSpliced(1, this.grid.matrix.length - 2)) {
+      for (const cell of col) {
+        cell.changeType("wall");
+        if (delayRequired) {
+          await delay(smartDelay);
         }
-        else {
-            randIndex = getRandomIntFromRange(toCheck.length / 2, toCheck.length);
+      }
+    }
+
+    if (this.grid.y % 2 === 0) {
+      for (const col of this.grid.matrix.toSpliced(1, this.grid.matrix.length - 2)) {
+        if (col[2].type.walkable) {
+          col[1].changeType("space");
         }
-        if (randIndex < toCheck.length) {
-            var randCell = toCheck[randIndex];
-            randCell.changeType("space");
-            toCheck.splice(randIndex, 1);
-            connectSpaces(randCell);
-            updateToCheck(toCheck, randCell);
-            if (delayRequired){
-                await delay(smartDelay);
+        if (delayRequired) {
+          await delay(smartDelay);
+        }
+      }
+    }
+
+    if (this.grid.x % 2 === 0) {
+      for (let i = 1; i < this.grid.y - 1; i += 1) {
+        if (this.grid.matrix[2][i].type.walkable) {
+          this.grid.matrix[1][i].changeType("space");
+        }
+        if (delayRequired) {
+          await delay(smartDelay);
+        }
+      }
+    }
+
+    this.placeStart();
+    this.placeFinish();
+
+    this.executing = false;
+  }
+
+  async exec() {
+    if (this.executing) {
+      return;
+    }
+    this.executing = true;
+    let openSet = [];
+    let closedSet = [];
+    this.grid.startCell.gCost = 0;
+    this.grid.startCell.fCost = this.grid.startCell.gCost + this.h(this.grid.startCell);
+    openSet.push(this.grid.startCell);
+
+    while (openSet.length > 0) {
+      await delay(2);
+      const currentCell = openSet.shift();
+      if (currentCell.type.name !== "finish" && currentCell.type.name !== "start") {
+        currentCell.changeType("routeClosed");
+      }
+      closedSet.push(currentCell);
+
+      if (currentCell === this.grid.finishCell) {
+        await this.pathFinder();
+        this.executing = false;
+        return;
+      }
+
+      const neighbours = this.grid.getNeighbours(currentCell, this.h);
+      for (const neighbour of neighbours) {
+        const tentativeScore = currentCell.gCost + getDistance(currentCell, neighbour);
+        if (closedSet.includes(neighbour) || tentativeScore >= neighbour.gCost) {
+          continue;
+        }
+        if (!closedSet.includes(neighbour) || tentativeScore < neighbour.gCost) {
+          neighbour.parent = currentCell;
+
+          neighbour.gCost = this.g(neighbour);
+          neighbour.fCost = neighbour.gCost + this.h(neighbour);
+
+          if (!openSet.includes(neighbour) && neighbour.walkable) {
+            if (neighbour.type.name !== "finish" && neighbour.type.name !== "start") {
+              neighbour.changeType("routeOpened");
             }
+            openSet.push(neighbour);
+          }
         }
+      }
+
+      openSet.sort((a, b) => a.fCost - b.fCost);
     }
+    this.logFunc?.("No path existing");
+    this.executing = false;
+  }
 
+  async pathFinder() {
+    this.executing = true;
+    const path = [];
+    let currentCell = this.grid.finishCell;
 
-
-    for (var i = 0; i < grid.matrix.length; i += 1) {
-        grid.matrix[i][0].changeType("wall");
-        grid.matrix[i][grid.matrix[0].length - 1].changeType("wall");
-        if (delayRequired){
-            await delay(smartDelay);
-        }
-    }
-
-    for (var i = 0; i < grid.matrix[0].length; i += 1) {
-        grid.matrix[0][i].changeType("wall");
-        grid.matrix[grid.matrix.length - 1][i].changeType("wall");
-        if (delayRequired){
-            await delay(smartDelay);
-        }
-    }
-
-    if (grid.matrix[0].length % 2 === 0) {
-        for (var i = 1; i < grid.matrix.length - 1; i += 1) {
-            if (grid.matrix[i][2].type !== "wall") {
-                grid.matrix[i][1].changeType("space");
-            }
-            if (delayRequired){
-                await delay(smartDelay);
-            }
-        }
-    }
-
-    if (grid.matrix.length % 2 === 0) {
-        for (var i = 1; i < grid.matrix[0].length - 1; i += 1) {
-            if (grid.matrix[2][i].type !== "wall") {
-                grid.matrix[1][i].changeType("space");
-            }
-            if (delayRequired){
-                await delay(smartDelay);
-            }
-        }
-    }
-
-    placeStart();
-    placeFinish();
-
-    beingExecuted = false;
-
-}
-
-fillGridWithRects();
-
-function getDistance(firstCell, secondCell) {
-    xDist = Math.abs(firstCell.xIndex - secondCell.xIndex);
-    yDist = Math.abs(firstCell.yIndex - secondCell.yIndex);
-
-    if (xDist > yDist) {
-        return 14 * yDist + 10 * (xDist - yDist);
-    }
-    else {
-        return 14 * xDist + 10 * (yDist - xDist);
-    }
-}
-
-async function pathFinder() {
-    
-    beingExecuted = true;
-    path = [];
-    currentCell = grid.finishCell;
-
-    while (currentCell !== grid.startCell) {
-        path.push(currentCell);
-        currentCell = currentCell.parent;
+    while (currentCell !== this.grid.startCell) {
+      path.push(currentCell);
+      currentCell = currentCell.parent;
     }
 
     path.reverse();
-    for (var i = 0; i < path.length - 1; i += 1) {
-        await delay(35);
-        beingExecuted = true;
-        if (path[i].type !== "startCell" && path[i].type !== "finishCell") {
-            path[i].changeType("routeIncluded");
-        }
+    for (const cell of path) {
+      await delay(35);
+      if (cell.type.name !== "start" && cell.type.name !== "finish") {
+        cell.changeType("routeIncluded");
+      }
     }
-    executed = true;
-    beingExecuted = false;
+    this.executing = false;
+  }
+
+
+  g(cell) {
+    cell.gCost = cell.parent.gCost + getDistance(cell, cell.parent);
+    return cell.gCost;
+  };
+
+  h = (cell) => getDistance(cell, this.grid.finishCell);
 }
 
 
+class Grid {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.matrix = [];
+    this.startCell = undefined;
+    this.finishCell = undefined;
+  }
 
-async function exec() {
-    if (executed || beingExecuted) {
-        return;
-    }
-    executed = true;
-    beingExecuted = true;
-    openSet = new myArray;
-    closedSet = [];
-    grid.startCell.gCost = 0;
-    grid.startCell.fCost = grid.startCell.gCost + h(grid.startCell);
-    openSet.push(grid.startCell);
 
-    while (openSet.array.length > 0) {
-        await delay(2);
-        var currentCell = openSet.pop();
-        if (currentCell.type !== "finish" && currentCell.type !== "start") {
-            currentCell.changeType("reouteClosed");
+  getNeighbours(cell, h) {
+    const neighbours = [];
+
+    for (let i = -1; i < 2; i += 1) {
+      for (let j = -1; j < 2; j += 1) {
+        const neighbourX = cell.xIndex + i;
+        const neighbourY = cell.yIndex + j;
+        if (neighbourX > -1 && neighbourX < this.x && neighbourY > -1 && neighbourY < this.y) {
+          if (!(i === 0 && j === 0 || !this.matrix[cell.xIndex + i][cell.yIndex + j].walkable ||
+            (!this.matrix[cell.xIndex + i][cell.yIndex].walkable && !this.matrix[cell.xIndex][cell.yIndex + j].walkable))) {
+            const neighbour = this.matrix[neighbourX][neighbourY];
+
+            neighbour.hCost = h(neighbour);
+            neighbour.fCost = neighbour.gCost + neighbour.hCost;
+
+            neighbours.push(this.matrix[neighbourX][neighbourY]);
+          }
         }
-        closedSet.push(currentCell);
-
-        if (currentCell === grid.finishCell) {
-            pathFinder();
-            
-            return;
-        }
-
-        var neighbours = grid.getNeighbours(currentCell);
-        neighbours.forEach(neighbour => {
-            var tentativeScore = currentCell.gCost + getDistance(currentCell, neighbour);
-            if (closedSet.includes(neighbour) || tentativeScore >= neighbour.gCost) {
-                return;
-            }
-            if (!closedSet.includes(neighbour) || tentativeScore < neighbour.gCost) {
-
-                neighbour.parent = currentCell;
-
-                neighbour.gCost = g(neighbour);
-                neighbour.fCost = neighbour.gCost + h(neighbour);
-
-                if (!openSet.array.includes(neighbour) && neighbour.walkable) {
-                    if (neighbour.type !== "finish" && neighbour.type !== "start") {
-                        neighbour.changeType("routeOpened");
-                    }
-                    openSet.push(neighbour);
-                }
-            }
-        });
-
+      }
     }
-    document.getElementById("NoPathFound").innerHTML = "No path existing";
-    beingExecuted = false; 
+    return neighbours;
+  }
+}
+
+class Cell {
+  #types = new Map([
+    ["space", { name: "space", color: "#F8F9F9", walkable: true }],
+    ["wall", { name: "wall", color: "#A8A8A8", walkable: false }],
+    ["start", { name: "start", color: "#001EC4", walkable: true }],
+    ["finish", { name: "finish", color: "#C40000", walkable: true }],
+    ["routeOpened", { name: "routeOpened", color: "#E8D957", walkable: true }],
+    ["routeClosed", { name: "routeClosed", color: "#C5E857", walkable: false }],
+    ["routeIncluded", { name: "routeIncluded", color: "#FF8213", walkable: true }]]);
+
+  parent;
+  gCost;
+  fCost;
+  xIndex;
+  yIndex;
+
+  constructor(x, y, squareSize, type, canvasContext) {
+    this.x = x;
+    this.y = y;
+    this.type = this.#types.get(type);
+    this.squareSize = squareSize;
+    this.canvasContext = canvasContext;
+  }
+
+  draw() {
+    this.canvasContext.clearRect(this.x, this.y, this.squareSize, this.squareSize);
+    this.canvasContext.beginPath();
+    this.canvasContext.rect(this.x + 0.5, this.y + 0.5, this.squareSize - 1, this.squareSize - 1);
+    this.canvasContext.fillStyle = this.type.color;
+    this.canvasContext.fill();
+    this.canvasContext.lineWidth = 0.3;
+    this.canvasContext.strokeStyle = "#17202A";
+    this.canvasContext.stroke();
+  };
+
+  get walkable() {
+    return this.type.walkable;
+  }
+
+  changeType(type) {
+    this.type = this.#types.get(type);
+    this.draw();
+  };
 }
 
 
-execution.addEventListener('click', exec);
+function getDistance(firstCell, secondCell) {
+  const xDist = Math.abs(firstCell.xIndex - secondCell.xIndex);
+  const yDist = Math.abs(firstCell.yIndex - secondCell.yIndex);
 
-maze.addEventListener('click', generateMaze);
+  if (xDist > yDist) {
+    return 14 * yDist + 10 * (xDist - yDist);
+  } else {
+    return 14 * xDist + 10 * (yDist - xDist);
+  }
+}
 
-resSubBtn.addEventListener('click', submitTriggered);
 
-canvas.addEventListener('mouseup', function () {
-    drag = false;
+let widthInput = document.getElementById("aStarWidth");
+let heightInput = document.getElementById("aStarHeight");
+let squareSizeInput = document.getElementById("aStarSquareSize");
+
+let width = widthInput.value = 30;
+let height = heightInput.value = 23;
+let squareSize = squareSizeInput.value = 20;
+
+document.getElementById("aStarWidth").onchange = ev => width = ev.target.value;
+document.getElementById("aStarHeight").onchange = ev => height = ev.target.value;
+document.getElementById("aStarSquareSize").onchange = ev => squareSize = ev.target.value;
+
+let canvas = document.getElementById("a-starCanvas");
+canvas.width = 60 * squareSize;
+canvas.height = 28 * squareSize;
+
+const maze = document.getElementById("generateMaze");
+const execution = document.getElementById("startRouting");
+const resSubBtn = document.getElementById("resolutionSubmitButton");
+
+let drag = false;
+let dragType;
+
+const algos = new AStar(canvas, alert);
+
+algos.fillGridWithRects();
+
+execution.addEventListener("click", () => algos.exec());
+
+maze.addEventListener("click", () => algos.generateMaze());
+
+resSubBtn.addEventListener("click", () => algos.submitTriggered());
+
+canvas.addEventListener("mouseup", function() {
+  drag = false;
 });
 
-canvas.addEventListener('mousedown', function (event) {
-    //TODO add a condition so this only works when cursor is over canvas 
-    var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
-    var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
-    dragType = grid.matrix[x - 1][y - 1].type;
-    drag = true;
+canvas.addEventListener("mousedown", function(event) {
+  //TODO add a condition so this only works when cursor is over canvas
+  const x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
+  const y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
+  dragType = algos.grid.matrix[x - 1][y - 1].type.name;
+  drag = true;
 });
 
-canvas.addEventListener('mousemove', function (event) {
-    if (!executed) {
-
-        var x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
-        var y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
-
-
-        if (drag === true) {
-            x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
-            y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
-            if (dragType === "space" && grid.matrix[x - 1][y - 1].type === "space") {
-                grid.matrix[x - 1][y - 1].changeType("wall");
-            }
-            else if (dragType === "wall" && grid.matrix[x - 1][y - 1].type === "wall") {
-                grid.matrix[x - 1][y - 1].changeType("space");
-            }
-            else if (dragType === "start" && grid.matrix[x - 1][y - 1].type === "space") {
-                if (grid.startCell !== grid.matrix[x - 1][y - 1]) {
-                    grid.startCell.changeType("space");
-                    grid.matrix[x - 1][y - 1].changeType("start");
-                    grid.startCell = grid.matrix[x - 1][y - 1];
-                }
-            }
-            else if (dragType === "finish" && grid.matrix[x - 1][y - 1].type === "space") {
-                if (grid.finishCell !== grid.matrix[x - 1][y - 1]) {
-                    grid.finishCell.changeType("space");
-                    grid.matrix[x - 1][y - 1].changeType("finish");
-                    grid.finishCell = grid.matrix[x - 1][y - 1];
-                }
-            }
+canvas.addEventListener("mousemove", function(event) {
+  if (!algos.executing) {
+    if (drag === true) {
+      const x = parseInt((event.offsetX / squareSize + 0.5).toFixed());
+      const y = parseInt((event.offsetY / squareSize + 0.5).toFixed());
+      if (dragType === "space" && algos.grid.matrix[x - 1][y - 1].type.name === "space") {
+        algos.grid.matrix[x - 1][y - 1].changeType("wall");
+      } else if (dragType === "wall" && algos.grid.matrix[x - 1][y - 1].type.name === "wall") {
+        algos.grid.matrix[x - 1][y - 1].changeType("space");
+      } else if (dragType === "start" && algos.grid.matrix[x - 1][y - 1].type.name === "space") {
+        if (algos.grid.startCell !== algos.grid.matrix[x - 1][y - 1]) {
+          algos.grid.startCell.changeType("space");
+          algos.grid.matrix[x - 1][y - 1].changeType("start");
+          algos.grid.startCell = algos.grid.matrix[x - 1][y - 1];
         }
+      } else if (dragType === "finish" && algos.grid.matrix[x - 1][y - 1].type.name === "space") {
+        if (algos.grid.finishCell !== algos.grid.matrix[x - 1][y - 1]) {
+          algos.grid.finishCell.changeType("space");
+          algos.grid.matrix[x - 1][y - 1].changeType("finish");
+          algos.grid.finishCell = algos.grid.matrix[x - 1][y - 1];
+        }
+      }
     }
-})
+  }
+});
 
 
