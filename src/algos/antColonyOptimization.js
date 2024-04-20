@@ -1,5 +1,3 @@
-const worker1 = new Worker('worker1.js');
-
 function clearCanvas(){
     c.clearRect(0, 0, canvas.width, canvas.height );
 }
@@ -733,8 +731,7 @@ async function exec(){
         ants.forEach((ant) => {
 
             if (ant.carryingFood){
-                worker1.postMessage(ant.goNest());
-                //ant.goNest();
+                ant.goNest();
                 //ant.secretion();
             }else{
                 var neighbours = grid.getNeighbours(grid.matrix[ant.x][ant.y]);
@@ -745,8 +742,7 @@ async function exec(){
                     }
                 })
                 if (!ant.carryingFood){
-                    worker1.postMessage(ant.move());
-                    //ant.move();
+                    ant.move();
                 }
             }
 
