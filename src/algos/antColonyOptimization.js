@@ -11,25 +11,6 @@ var c = canvas.getContext('2d');
 
 var foodCollectedParagraph = document.getElementById("foodCollected");
 
-//TODO rectanle for buttons to be on OR removing 
-// var buttonCanvas = document.getElementById('underButtonCanvas');
-// var buttonContext = buttonCanvas.getContext('2d');
-// var buttonPos = document.getElementById("Width and Height");
-// var buttonRect = buttonPos.getBoundingClientRect();
-
-// buttonCanvas.style.left = (buttonRect.left - 25).toString() + "px";
-// buttonCanvas.style.top = (buttonRect.top - 7).toString() + "px";
-// buttonCanvas.style.width = (buttonRect.right - buttonRect.left + 20).toString() + "px";
-// buttonCanvas.style.height = (buttonRect.bottom - buttonRect.top).toString() + "px";
-// buttonCanvas.style.position = "absolute";
-// buttonContext.beginPath();
-// buttonContext.rect(0, 0, 300, 150);
-// buttonContext.fillStyle = "#BDBDBD";
-// buttonContext.fill();
-// buttonContext.lineWidth = 0.3;
-// buttonContext.strokeStyle = "#17202A";
-// buttonContext.stroke();
-
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
     
@@ -129,7 +110,7 @@ function Ant(x, y){
         }else{
             
             foodCollected += 1;
-            var string = foodCollected.toString();
+            var string = "food collected" + foodCollected.toString();
             foodCollectedParagraph.innerHTML = string;
             this.carryingFood = false;
         }
@@ -712,6 +693,127 @@ const delay = (delayInms) => {
     return new Promise(resolve => setTimeout(resolve, delayInms));
   };
 
+  async function generateMaze() {
+    if (executed === true) {
+        return;
+    }
+    executed = true;
+
+    clearCanvas();
+    fillGridWithRects();
+
+    for (var i = 0; i < grid.matrix.length; i += 1) {
+        for (var j = 0; j < grid.matrix[0].length; j += 1) {
+            grid.matrix[i][j].changeType("wall");
+        }
+    }
+
+    for (var i = 0; i < grid.matrix.length; i += 1) {
+        grid.matrix[i][0].changeType("space");
+        grid.matrix[i][grid.matrix[0].length - 1].changeType("space");
+    }
+
+    for (var i = 0; i < grid.matrix[0].length; i += 1) {
+        grid.matrix[0][i].changeType("space");
+        grid.matrix[grid.matrix.length - 1][i].changeType("space");
+    }
+
+    var randX;
+    var randY;
+    if (grid.matrix.length % 2 !== 0) {
+        randX = getRandomIntFromRange(1, (grid.matrix.length - 2) / 2) * 2 + 1;
+    }
+    else {
+        randX = getRandomIntFromRange(1, (grid.matrix.length) / 2) * 2;
+    }
+
+    if (grid.matrix[0].length % 2 !== 0) {
+        randY = getRandomIntFromRange(1, (grid.matrix[0].length - 2) / 2) * 2 + 1;
+    }
+    else {
+        randY = getRandomIntFromRange(1, (grid.matrix[0].length) / 2) * 2;
+    }
+
+    var curCell = grid.matrix[randX][randY];
+    curCell.changeType("space");
+    var toCheck = [];
+    updateToCheck(toCheck, curCell);
+
+    var smartDelay = 2000 / (grid.matrix.length * grid.matrix[0].length);
+    var delayRequired = true;
+    if (grid.matrix.length * grid.matrix[0].length > 2500){
+        delayRequired = false;
+    }
+
+    while (toCheck.length > 0) {
+        var randIndex = getRandomInt(toCheck.length);
+        while (toCheck.length > 0 && toCheck[randIndex].type === "space") {
+            toCheck.splice(randIndex, 1);
+            randIndex = getRandomInt(toCheck.length);
+        }
+        if (randIndex % 3 === 0) {
+            randIndex = getRandomInt(toCheck.length / 2);
+        }
+        else {
+            randIndex = getRandomIntFromRange(toCheck.length / 2, toCheck.length);
+        }
+        if (randIndex < toCheck.length) {
+            var randCell = toCheck[randIndex];
+            randCell.changeType("space");
+            toCheck.splice(randIndex, 1);
+            connectSpaces(randCell);
+            updateToCheck(toCheck, randCell);
+            if (delayRequired){
+                await delay(smartDelay);
+            }
+        }
+    }
+
+
+
+    for (var i = 0; i < grid.matrix.length; i += 1) {
+        grid.matrix[i][0].changeType("wall");
+        grid.matrix[i][grid.matrix[0].length - 1].changeType("wall");
+        if (delayRequired){
+            await delay(smartDelay);
+        }
+    }
+
+    for (var i = 0; i < grid.matrix[0].length; i += 1) {
+        grid.matrix[0][i].changeType("wall");
+        grid.matrix[grid.matrix.length - 1][i].changeType("wall");
+        if (delayRequired){
+            await delay(smartDelay);
+        }
+    }
+
+    if (grid.matrix[0].length % 2 === 0) {
+        for (var i = 1; i < grid.matrix.length - 1; i += 1) {
+            if (grid.matrix[i][2].type !== "wall") {
+                grid.matrix[i][1].changeType("space");
+            }
+            if (delayRequired){
+                await delay(smartDelay);
+            }
+        }
+    }
+
+    if (grid.matrix.length % 2 === 0) {
+        for (var i = 1; i < grid.matrix[0].length - 1; i += 1) {
+            if (grid.matrix[2][i].type !== "wall") {
+                grid.matrix[1][i].changeType("space");
+            }
+            if (delayRequired){
+                await delay(smartDelay);
+            }
+        }
+    }
+
+    placeNest()
+
+    executed = false;
+
+}
 
 async function exec(){
     if (executed == true){
@@ -758,6 +860,9 @@ var execution = document.getElementById("Start Routing");
 
 execution.addEventListener('click', exec);
 
+var maze = document.getElementById("generateMaze");
+
+maze.addEventListener('click', generateMaze);
 
 var resSubBtn = document.getElementById('resolutionSubmitButton');
 
